@@ -1,0 +1,14 @@
+# Development Environment Configuration
+# 开发环境配置
+
+# 说明:
+# - 日志输出到文件 logs/app.log，JSON 格式
+# - 日志级别: 项目包 DEBUG，框架包 WARN
+# - 数据库/Redis/SQS 连接信息需要在此配置
+
+spring:
+  # 禁用数据源自动配置 (可在需要时启用)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure

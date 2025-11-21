@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 导入 Spring Boot 默认配置 (支持 %clr 等转换器) -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 定义日志文件路径 -->
+    <property name="LOG_PATH" value="logs"/>
+    <property name="LOG_FILE" value="app"/>
+    <property name="ERROR_LOG_FILE" value="error"/>
+
+    <!-- ================================ -->
+    <!-- Local 环境配置 (本地开发)          -->
+    <!-- ================================ -->
+    <springProfile name="local">
+        <!-- 控制台输出 Appender (彩色格式) -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr([%X{traceId:-},%X{spanId:-}]){yellow} %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- Root Logger -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <!-- 项目包日志级别 DEBUG -->
+        <logger name="com.catface996.aiops" level="DEBUG"/>
+
+        <!-- 框架包日志级别 WARN -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="com.baomidou" level="WARN"/>
+        <logger name="com.amazonaws" level="WARN"/>
+    </springProfile>
+
+    <!-- ================================ -->
+    <!-- Dev/Test 环境配置                -->
+    <!-- ================================ -->
+    <springProfile name="dev,test">
+        <!-- 文件输出 Appender (JSON 格式) -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${LOG_FILE}.log</file>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+                <customFields>{"application":"aiops-service"}</customFields>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>10GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- ERROR 日志单独输出 -->
+        <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${ERROR_LOG_FILE}.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+                <customFields>{"application":"aiops-service"}</customFields>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${ERROR_LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>5GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- Root Logger -->
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
+        </root>
+
+        <!-- 项目包日志级别 DEBUG -->
+        <logger name="com.catface996.aiops" level="DEBUG"/>
+
+        <!-- 框架包日志级别 WARN -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="com.baomidou" level="WARN"/>
+        <logger name="com.amazonaws" level="WARN"/>
+    </springProfile>
+
+    <!-- ================================ -->
+    <!-- Staging/Prod 环境配置            -->
+    <!-- ================================ -->
+    <springProfile name="staging,prod">
+        <!-- 文件输出 Appender (JSON 格式) -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${LOG_FILE}.log</file>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+                <customFields>{"application":"aiops-service"}</customFields>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>90</maxHistory>
+                <totalSizeCap>20GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- ERROR 日志单独输出 -->
+        <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${ERROR_LOG_FILE}.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+                <customFields>{"application":"aiops-service"}</customFields>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${ERROR_LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>90</maxHistory>
+                <totalSizeCap>10GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- 异步 Appender (提升性能) -->
+        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <appender-ref ref="FILE"/>
+        </appender>
+
+        <appender name="ASYNC_ERROR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <appender-ref ref="ERROR_FILE"/>
+        </appender>
+
+        <!-- Root Logger -->
+        <root level="INFO">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+
+        <!-- 项目包日志级别 INFO -->
+        <logger name="com.catface996.aiops" level="INFO"/>
+
+        <!-- 框架包日志级别 WARN -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="com.baomidou" level="WARN"/>
+        <logger name="com.amazonaws" level="WARN"/>
+    </springProfile>
+</configuration>

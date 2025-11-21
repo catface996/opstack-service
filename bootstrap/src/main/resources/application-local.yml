@@ -1,0 +1,14 @@
+# Local Development Environment Configuration
+# 本地开发环境配置
+
+# 说明:
+# - 日志输出到控制台，彩色格式 (在 logback-spring.xml 中配置)
+# - 日志级别: 项目包 DEBUG，框架包 WARN
+# - 数据库/Redis/SQS 配置可根据本地环境添加
+
+spring:
+  # 禁用数据源自动配置 (可在需要时启用)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure

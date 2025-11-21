@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: aiops-service
+
+server:
+  port: 8080
+
+# Micrometer Tracing 配置
+management:
+  tracing:
+    sampling:
+      probability: 1.0  # 确保所有请求都追踪 (100%)
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /actuator
+  metrics:
+    tags:
+      application: aiops-service
+
+# 说明: 本文件包含所有环境共享的配置
+# 环境特定配置请在对应的 application-{profile}.yml 中覆盖

@@ -1,0 +1,7 @@
+# Test Environment Configuration
+# 测试环境配置
+
+# 说明:
+# - 日志输出到文件 logs/app.log，JSON 格式
+# - 日志级别: 项目包 DEBUG，框架包 WARN
+# - 测试数据库/Redis/SQS 连接信息需要在此配置

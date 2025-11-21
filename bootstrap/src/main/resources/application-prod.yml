@@ -1,0 +1,16 @@
+# Production Environment Configuration
+# 生产环境配置
+
+# 说明:
+# - 日志输出到文件 logs/app.log，JSON 格式
+# - 日志级别: 项目包 INFO，框架包 WARN
+# - 使用 AsyncAppender 提升性能
+# - 生产环境配置使用环境变量占位符，避免在代码中硬编码敏感信息
+# - 示例: ${DB_HOST:localhost}, ${DB_PORT:3306}
+
+spring:
+  # 禁用数据源自动配置 (可在需要时启用)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure
