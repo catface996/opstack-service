@@ -29,7 +29,7 @@
 
 ## 阶段1：基础设施准备（3个任务，2小时）
 
-- [ ] 1. 配置基础设施和项目结构
+- [x] 1. 配置基础设施和项目结构
   - 添加 Spring Security、JWT、Redis 相关依赖
   - 配置 Redis 连接和序列化方式
   - 创建 DDD 分层包结构（domain/application/interface/infrastructure）

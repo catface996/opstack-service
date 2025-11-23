@@ -4,6 +4,17 @@ spring:
   application:
     name: aiops-service
 
+  # Redis 配置 (通用配置)
+  data:
+    redis:
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
 server:
   port: 8080
 
