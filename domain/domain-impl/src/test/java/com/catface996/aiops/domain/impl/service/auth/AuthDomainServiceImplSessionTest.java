@@ -7,7 +7,9 @@ import com.catface996.aiops.domain.api.model.auth.AccountRole;
 import com.catface996.aiops.domain.api.model.auth.AccountStatus;
 import com.catface996.aiops.domain.api.model.auth.DeviceInfo;
 import com.catface996.aiops.domain.api.model.auth.Session;
+import com.catface996.aiops.domain.api.repository.auth.AccountRepository;
 import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
+import com.catface996.aiops.infrastructure.cache.api.service.LoginAttemptCache;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -60,6 +62,8 @@ class AuthDomainServiceImplSessionTest {
         jwtTokenProvider = mock(JwtTokenProvider.class);
         sessionCache = mock(SessionCache.class);
         sessionRepository = mock(SessionRepository.class);
+        LoginAttemptCache loginAttemptCache = mock(LoginAttemptCache.class);
+        AccountRepository accountRepository = mock(AccountRepository.class);
 
         when(sessionCache.get(anyString())).thenReturn(Optional.empty());
         when(sessionRepository.findById(anyString())).thenReturn(Optional.empty());
@@ -70,7 +74,9 @@ class AuthDomainServiceImplSessionTest {
             passwordEncoder,
             jwtTokenProvider,
             sessionCache,
-            sessionRepository
+            sessionRepository,
+            loginAttemptCache,
+            accountRepository
         );
 
         // 创建测试数据

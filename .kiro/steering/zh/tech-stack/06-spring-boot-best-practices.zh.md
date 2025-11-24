@@ -352,38 +352,351 @@ public class GlobalExceptionHandler {
 
 **1. 使用 SLF4J + Logback**
 - Spring Boot 默认集成
+- 使用 @Slf4j 注解（Lombok）
 - 不要使用 System.out.println
 
 **2. 日志级别**
-- ERROR：错误信息
-- WARN：警告信息
-- INFO：重要信息
-- DEBUG：调试信息
-- TRACE：详细信息
+- ERROR：错误信息，系统异常
+- WARN：警告信息，潜在问题
+- INFO：重要信息，关键业务操作
+- DEBUG：调试信息，详细流程
+- TRACE：详细信息，底层追踪
 
-**3. 日志内容**
-- 记录关键业务操作
-- 记录异常信息
-- 记录性能指标
-- 不要记录敏感信息（密码、身份证号等）
+**3. 日志内容原则**
+- ✅ 记录关键业务操作（登录、注册、支付等）
+- ✅ 记录方法入参和返回值（敏感信息除外）
+- ✅ 记录异常信息和堆栈
+- ✅ 记录性能指标（耗时、大小等）
+- ✅ 记录重要业务状态变更
+- ❌ 不要记录敏感信息（密码、身份证号、银行卡号等）
+- ❌ 不要在循环中打印大量日志
+- ❌ 不要使用字符串拼接（使用占位符）
 
-**4. 日志格式**
+**4. 关键业务操作日志**
+
+**你必须在以下场景打印日志**：
+
+**Domain Service（领域服务）层**：
 ```java
 @Slf4j
 @Service
-public class UserService {
+public class AuthDomainServiceImpl implements AuthDomainService {
+
+    @Override
+    public String encryptPassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.isEmpty()) {
+            throw new IllegalArgumentException("原始密码不能为空");
+        }
+
+        log.info("开始加密密码");
+        String encrypted = passwordEncoder.encode(rawPassword);
+        log.info("密码加密完成，加密后长度：{}", encrypted.length());
+
+        return encrypted;
+    }
+
+    @Override
+    public Session createSession(Account account, boolean rememberMe, DeviceInfo deviceInfo) {
+        if (account == null) {
+            throw new IllegalArgumentException("账号不能为空");
+        }
+
+        log.info("开始创建会话，用户ID：{}，用户名：{}，rememberMe：{}，设备：{}",
+            account.getId(), account.getUsername(), rememberMe, deviceInfo.getDeviceType());
+
+        String sessionId = UUID.randomUUID().toString();
+        LocalDateTime expiresAt = rememberMe
+            ? LocalDateTime.now().plusDays(REMEMBER_ME_SESSION_DAYS)
+            : LocalDateTime.now().plusHours(DEFAULT_SESSION_HOURS);
+
+        String token = jwtTokenProvider.generateToken(
+            account.getId(),
+            account.getUsername(),
+            account.getRole() != null ? account.getRole().name() : "USER",
+            rememberMe
+        );
+
+        Session session = new Session(
+            sessionId,
+            account.getId(),
+            token,
+            expiresAt,
+            deviceInfo,
+            LocalDateTime.now()
+        );
+
+        Session persistedSession = sessionRepository.save(session);
+        cacheSession(persistedSession);
+
+        log.info("会话创建成功，会话ID：{}，用户ID：{}，过期时间：{}",
+            sessionId, account.getId(), expiresAt);
+
+        return persistedSession;
+    }
+
+    @Override
+    public int recordLoginFailure(String identifier) {
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("标识符不能为空");
+        }
+
+        log.info("记录登录失败，标识符：{}", identifier);
+
+        int failureCount = loginAttemptCache.recordFailure(identifier);
+
+        log.info("登录失败记录完成，标识符：{}，失败次数：{}", identifier, failureCount);
+
+        if (failureCount >= MAX_LOGIN_ATTEMPTS) {
+            log.warn("登录失败次数达到阈值，触发账号锁定，标识符：{}，失败次数：{}",
+                identifier, failureCount);
+            lockAccount(identifier, LOCK_DURATION_MINUTES);
+        }
+
+        return failureCount;
+    }
+
+    @Override
+    public void unlockAccount(Long accountId) {
+        if (accountId == null) {
+            throw new IllegalArgumentException("账号ID不能为空");
+        }
+
+        log.info("开始解锁账号，账号ID：{}", accountId);
+
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+        if (!accountOpt.isPresent()) {
+            log.error("解锁账号失败，账号不存在，账号ID：{}", accountId);
+            throw new IllegalArgumentException("账号不存在");
+        }
+
+        Account account = accountOpt.get();
+
+        if (account.getUsername() != null) {
+            loginAttemptCache.unlock(account.getUsername());
+            log.info("清除用户名失败计数，用户名：{}", account.getUsername());
+        }
+
+        if (account.getEmail() != null) {
+            loginAttemptCache.unlock(account.getEmail());
+            log.info("清除邮箱失败计数，邮箱：{}", account.getEmail());
+        }
+
+        if (account.getStatus() == AccountStatus.LOCKED) {
+            accountRepository.updateStatus(accountId, AccountStatus.ACTIVE);
+            log.info("账号状态已更新，账号ID：{}，旧状态：{}，新状态：{}",
+                accountId, AccountStatus.LOCKED, AccountStatus.ACTIVE);
+        }
+
+        log.info("账号解锁成功，账号ID：{}，用户名：{}", accountId, account.getUsername());
+    }
+}
+```
+
+**Application Service（应用服务）层**：
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserAppServiceImpl implements UserAppService {
+    private final UserRepository userRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDTO getUserById(Long id) {
+        log.info("查询用户信息，用户ID：{}", id);
+
+        // 先查缓存
+        String key = "user:info:" + id;
+        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            log.info("从缓存获取用户信息，用户ID：{}", id);
+            return cached;
+        }
+
+        log.info("缓存未命中，从数据库查询用户信息，用户ID：{}", id);
+
+        // 查数据库
+        UserEntity entity = userRepository.findById(id)
+            .orElseThrow(() -> {
+                log.error("用户不存在，用户ID：{}", id);
+                return new BusinessException("用户不存在");
+            });
+
+        UserDTO dto = convertToDTO(entity);
+
+        // 写缓存
+        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
+        log.info("用户信息写入缓存，用户ID：{}，缓存TTL：30分钟", id);
+
+        log.info("查询用户信息成功，用户ID：{}，用户名：{}", id, dto.getUsername());
+
+        return dto;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void createUser(CreateUserRequest request) {
-        log.info("创建用户，用户名：{}", request.getUsername());
+        log.info("开始创建用户，用户名：{}，邮箱：{}", request.getUsername(), request.getEmail());
+
         try {
             // 业务逻辑
-            log.info("用户创建成功，用户ID：{}", userId);
+            UserEntity entity = new UserEntity();
+            // 设置属性
+            userRepository.save(entity);
+
+            log.info("用户创建成功，用户ID：{}，用户名：{}", entity.getId(), entity.getUsername());
         } catch (Exception e) {
-            log.error("用户创建失败，用户名：{}", request.getUsername(), e);
+            log.error("用户创建失败，用户名：{}，邮箱：{}",
+                request.getUsername(), request.getEmail(), e);
             throw e;
         }
     }
 }
 ```
+
+**Repository（数据访问）层**：
+```java
+@Slf4j
+@Repository
+@RequiredArgsConstructor
+public class AccountRepositoryImpl implements AccountRepository {
+    private final AccountMapper accountMapper;
+
+    @Override
+    public Optional<Account> findById(Long id) {
+        log.info("查询账号，账号ID：{}", id);
+
+        AccountPO po = accountMapper.selectById(id);
+        if (po == null) {
+            log.info("账号不存在，账号ID：{}", id);
+            return Optional.empty();
+        }
+
+        Account account = convertToEntity(po);
+        log.info("查询账号成功，账号ID：{}，用户名：{}", id, account.getUsername());
+
+        return Optional.of(account);
+    }
+
+    @Override
+    public Account save(Account account) {
+        log.info("保存账号，用户名：{}，邮箱：{}", account.getUsername(), account.getEmail());
+
+        AccountPO po = convertToPO(account);
+
+        if (account.getId() == null) {
+            accountMapper.insert(po);
+            log.info("新增账号成功，账号ID：{}，用户名：{}", po.getId(), po.getUsername());
+        } else {
+            accountMapper.updateById(po);
+            log.info("更新账号成功，账号ID：{}，用户名：{}", po.getId(), po.getUsername());
+        }
+
+        return convertToEntity(po);
+    }
+}
+```
+
+**5. 日志格式规范**
+
+**使用占位符而不是字符串拼接**：
+```java
+// ❌ 错误：字符串拼接
+log.info("用户登录，用户名：" + username + "，IP：" + ip);
+
+// ✅ 正确：使用占位符
+log.info("用户登录，用户名：{}，IP：{}", username, ip);
+```
+
+**异常日志必须包含堆栈**：
+```java
+// ❌ 错误：丢失堆栈信息
+log.error("用户创建失败，错误：" + e.getMessage());
+
+// ✅ 正确：包含完整堆栈
+log.error("用户创建失败，用户名：{}", username, e);
+```
+
+**重要操作前后都要打印日志**：
+```java
+// ✅ 正确：操作前后都有日志
+log.info("开始发送邮件，收件人：{}", email);
+emailService.send(email, content);
+log.info("邮件发送成功，收件人：{}", email);
+```
+
+**6. 日志上下文信息**
+
+**关键信息要包含**：
+- 用户ID
+- 用户名
+- 操作类型
+- 业务对象ID
+- IP地址（在 Controller 层）
+- 请求ID（Trace ID）
+
+**示例**：
+```java
+log.info("用户登录成功，用户ID：{}，用户名：{}，IP：{}，设备：{}",
+    userId, username, ip, deviceType);
+```
+
+**7. 性能日志**
+
+**记录关键操作耗时**：
+```java
+@Slf4j
+@Service
+public class OrderService {
+    public void createOrder(CreateOrderRequest request) {
+        long startTime = System.currentTimeMillis();
+
+        log.info("开始创建订单，用户ID：{}", request.getUserId());
+
+        // 业务逻辑
+
+        long endTime = System.currentTimeMillis();
+        log.info("订单创建完成，订单ID：{}，耗时：{}ms", orderId, endTime - startTime);
+    }
+}
+```
+
+**8. 日志级别使用指南**
+
+| 日志级别 | 使用场景 | 示例 |
+|---------|---------|------|
+| **ERROR** | 系统异常、业务失败 | `log.error("用户注册失败，用户名：{}", username, e)` |
+| **WARN** | 潜在问题、业务警告 | `log.warn("登录失败次数达到阈值，用户名：{}", username)` |
+| **INFO** | 关键业务操作、状态变更 | `log.info("用户登录成功，用户ID：{}", userId)` |
+| **DEBUG** | 详细流程、调试信息 | `log.debug("查询用户缓存，key：{}", cacheKey)` |
+| **TRACE** | 底层追踪、详细数据 | `log.trace("SQL执行，参数：{}", params)` |
+
+**9. 日志检查清单**
+
+在编写代码时，你应该检查：
+
+- [ ] 是否使用 @Slf4j 注解
+- [ ] 关键业务操作是否打印日志（开始、成功、失败）
+- [ ] 方法入参是否记录（敏感信息除外）
+- [ ] 异常日志是否包含堆栈
+- [ ] 是否使用占位符而不是字符串拼接
+- [ ] 日志级别是否合适
+- [ ] 日志信息是否完整（包含关键上下文）
+- [ ] 是否记录敏感信息（密码、身份证号等）
+- [ ] 循环中是否打印过多日志
+- [ ] 重要状态变更是否记录
+
+**10. 常见错误**
+
+| 错误类型 | 错误做法 | 正确做法 |
+|---------|---------|---------|
+| **没有日志** | 关键业务操作不打印日志 | 操作前后都打印日志 |
+| **字符串拼接** | `log.info("用户：" + username)` | `log.info("用户：{}", username)` |
+| **丢失堆栈** | `log.error(e.getMessage())` | `log.error("操作失败", e)` |
+| **敏感信息** | `log.info("密码：{}", password)` | 不记录密码等敏感信息 |
+| **循环日志** | 循环中每次都打印 | 汇总后打印或降低级别 |
+| **级别错误** | INFO 记录调试信息 | DEBUG 记录调试信息 |
 
 ## 参数校验规范
 

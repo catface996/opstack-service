@@ -352,38 +352,351 @@ public class GlobalExceptionHandler {
 
 **1. Use SLF4J + Logback**
 - Spring Boot integrates by default
+- Use @Slf4j annotation (Lombok)
 - Don't use System.out.println
 
 **2. Log levels**
-- ERROR: Error information
-- WARN: Warning information
-- INFO: Important information
-- DEBUG: Debug information
-- TRACE: Detailed information
+- ERROR: Error information, system exceptions
+- WARN: Warning information, potential issues
+- INFO: Important information, key business operations
+- DEBUG: Debug information, detailed process
+- TRACE: Detailed information, low-level tracing
 
-**3. Log content**
-- Record key business operations
-- Record exception information
-- Record performance metrics
-- Don't record sensitive information (passwords, ID numbers, etc.)
+**3. Logging content principles**
+- ✅ Record key business operations (login, registration, payment, etc.)
+- ✅ Record method inputs and return values (except sensitive info)
+- ✅ Record exception information and stack traces
+- ✅ Record performance metrics (time cost, size, etc.)
+- ✅ Record important business state changes
+- ❌ Don't record sensitive information (passwords, ID numbers, bank card numbers, etc.)
+- ❌ Don't print excessive logs in loops
+- ❌ Don't use string concatenation (use placeholders)
 
-**4. Log format**
+**4. Key business operation logging**
+
+**You MUST log in the following scenarios**:
+
+**Domain Service Layer**:
 ```java
 @Slf4j
 @Service
-public class UserService {
+public class AuthDomainServiceImpl implements AuthDomainService {
+
+    @Override
+    public String encryptPassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.isEmpty()) {
+            throw new IllegalArgumentException("Raw password cannot be empty");
+        }
+
+        log.info("Starting password encryption");
+        String encrypted = passwordEncoder.encode(rawPassword);
+        log.info("Password encryption completed, encrypted length: {}", encrypted.length());
+
+        return encrypted;
+    }
+
+    @Override
+    public Session createSession(Account account, boolean rememberMe, DeviceInfo deviceInfo) {
+        if (account == null) {
+            throw new IllegalArgumentException("Account cannot be null");
+        }
+
+        log.info("Starting session creation, userID: {}, username: {}, rememberMe: {}, device: {}",
+            account.getId(), account.getUsername(), rememberMe, deviceInfo.getDeviceType());
+
+        String sessionId = UUID.randomUUID().toString();
+        LocalDateTime expiresAt = rememberMe
+            ? LocalDateTime.now().plusDays(REMEMBER_ME_SESSION_DAYS)
+            : LocalDateTime.now().plusHours(DEFAULT_SESSION_HOURS);
+
+        String token = jwtTokenProvider.generateToken(
+            account.getId(),
+            account.getUsername(),
+            account.getRole() != null ? account.getRole().name() : "USER",
+            rememberMe
+        );
+
+        Session session = new Session(
+            sessionId,
+            account.getId(),
+            token,
+            expiresAt,
+            deviceInfo,
+            LocalDateTime.now()
+        );
+
+        Session persistedSession = sessionRepository.save(session);
+        cacheSession(persistedSession);
+
+        log.info("Session created successfully, sessionID: {}, userID: {}, expiresAt: {}",
+            sessionId, account.getId(), expiresAt);
+
+        return persistedSession;
+    }
+
+    @Override
+    public int recordLoginFailure(String identifier) {
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("Identifier cannot be empty");
+        }
+
+        log.info("Recording login failure, identifier: {}", identifier);
+
+        int failureCount = loginAttemptCache.recordFailure(identifier);
+
+        log.info("Login failure recorded, identifier: {}, failureCount: {}", identifier, failureCount);
+
+        if (failureCount >= MAX_LOGIN_ATTEMPTS) {
+            log.warn("Login failure threshold reached, triggering account lock, identifier: {}, failureCount: {}",
+                identifier, failureCount);
+            lockAccount(identifier, LOCK_DURATION_MINUTES);
+        }
+
+        return failureCount;
+    }
+
+    @Override
+    public void unlockAccount(Long accountId) {
+        if (accountId == null) {
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+
+        log.info("Starting account unlock, accountID: {}", accountId);
+
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+        if (!accountOpt.isPresent()) {
+            log.error("Account unlock failed, account not found, accountID: {}", accountId);
+            throw new IllegalArgumentException("Account not found");
+        }
+
+        Account account = accountOpt.get();
+
+        if (account.getUsername() != null) {
+            loginAttemptCache.unlock(account.getUsername());
+            log.info("Cleared username failure count, username: {}", account.getUsername());
+        }
+
+        if (account.getEmail() != null) {
+            loginAttemptCache.unlock(account.getEmail());
+            log.info("Cleared email failure count, email: {}", account.getEmail());
+        }
+
+        if (account.getStatus() == AccountStatus.LOCKED) {
+            accountRepository.updateStatus(accountId, AccountStatus.ACTIVE);
+            log.info("Account status updated, accountID: {}, oldStatus: {}, newStatus: {}",
+                accountId, AccountStatus.LOCKED, AccountStatus.ACTIVE);
+        }
+
+        log.info("Account unlocked successfully, accountID: {}, username: {}", accountId, account.getUsername());
+    }
+}
+```
+
+**Application Service Layer**:
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserAppServiceImpl implements UserAppService {
+    private final UserRepository userRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDTO getUserById(Long id) {
+        log.info("Querying user info, userID: {}", id);
+
+        // Check cache first
+        String key = "user:info:" + id;
+        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            log.info("User info retrieved from cache, userID: {}", id);
+            return cached;
+        }
+
+        log.info("Cache miss, querying from database, userID: {}", id);
+
+        // Query database
+        UserEntity entity = userRepository.findById(id)
+            .orElseThrow(() -> {
+                log.error("User not found, userID: {}", id);
+                return new BusinessException("User not found");
+            });
+
+        UserDTO dto = convertToDTO(entity);
+
+        // Write cache
+        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
+        log.info("User info written to cache, userID: {}, TTL: 30 minutes", id);
+
+        log.info("User info query successful, userID: {}, username: {}", id, dto.getUsername());
+
+        return dto;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void createUser(CreateUserRequest request) {
-        log.info("Creating user, username: {}", request.getUsername());
+        log.info("Starting user creation, username: {}, email: {}", request.getUsername(), request.getEmail());
+
         try {
             // Business logic
-            log.info("User created successfully, userID: {}", userId);
+            UserEntity entity = new UserEntity();
+            // Set attributes
+            userRepository.save(entity);
+
+            log.info("User created successfully, userID: {}, username: {}", entity.getId(), entity.getUsername());
         } catch (Exception e) {
-            log.error("User creation failed, username: {}", request.getUsername(), e);
+            log.error("User creation failed, username: {}, email: {}",
+                request.getUsername(), request.getEmail(), e);
             throw e;
         }
     }
 }
 ```
+
+**Repository Layer**:
+```java
+@Slf4j
+@Repository
+@RequiredArgsConstructor
+public class AccountRepositoryImpl implements AccountRepository {
+    private final AccountMapper accountMapper;
+
+    @Override
+    public Optional<Account> findById(Long id) {
+        log.info("Querying account, accountID: {}", id);
+
+        AccountPO po = accountMapper.selectById(id);
+        if (po == null) {
+            log.info("Account not found, accountID: {}", id);
+            return Optional.empty();
+        }
+
+        Account account = convertToEntity(po);
+        log.info("Account query successful, accountID: {}, username: {}", id, account.getUsername());
+
+        return Optional.of(account);
+    }
+
+    @Override
+    public Account save(Account account) {
+        log.info("Saving account, username: {}, email: {}", account.getUsername(), account.getEmail());
+
+        AccountPO po = convertToPO(account);
+
+        if (account.getId() == null) {
+            accountMapper.insert(po);
+            log.info("Account inserted successfully, accountID: {}, username: {}", po.getId(), po.getUsername());
+        } else {
+            accountMapper.updateById(po);
+            log.info("Account updated successfully, accountID: {}, username: {}", po.getId(), po.getUsername());
+        }
+
+        return convertToEntity(po);
+    }
+}
+```
+
+**5. Log format standards**
+
+**Use placeholders instead of string concatenation**:
+```java
+// ❌ Wrong: String concatenation
+log.info("User login, username: " + username + ", IP: " + ip);
+
+// ✅ Correct: Use placeholders
+log.info("User login, username: {}, IP: {}", username, ip);
+```
+
+**Exception logs must include stack traces**:
+```java
+// ❌ Wrong: Lost stack trace
+log.error("User creation failed, error: " + e.getMessage());
+
+// ✅ Correct: Include full stack trace
+log.error("User creation failed, username: {}", username, e);
+```
+
+**Log before and after important operations**:
+```java
+// ✅ Correct: Logs before and after operation
+log.info("Starting email send, recipient: {}", email);
+emailService.send(email, content);
+log.info("Email sent successfully, recipient: {}", email);
+```
+
+**6. Log context information**
+
+**Key information to include**:
+- User ID
+- Username
+- Operation type
+- Business object ID
+- IP address (in Controller layer)
+- Request ID (Trace ID)
+
+**Example**:
+```java
+log.info("User login successful, userID: {}, username: {}, IP: {}, device: {}",
+    userId, username, ip, deviceType);
+```
+
+**7. Performance logging**
+
+**Record time cost of key operations**:
+```java
+@Slf4j
+@Service
+public class OrderService {
+    public void createOrder(CreateOrderRequest request) {
+        long startTime = System.currentTimeMillis();
+
+        log.info("Starting order creation, userID: {}", request.getUserId());
+
+        // Business logic
+
+        long endTime = System.currentTimeMillis();
+        log.info("Order creation completed, orderID: {}, timeCost: {}ms", orderId, endTime - startTime);
+    }
+}
+```
+
+**8. Log level usage guide**
+
+| Log Level | Usage Scenario | Example |
+|-----------|---------------|---------|
+| **ERROR** | System exceptions, business failures | `log.error("User registration failed, username: {}", username, e)` |
+| **WARN** | Potential issues, business warnings | `log.warn("Login failure threshold reached, username: {}", username)` |
+| **INFO** | Key business operations, state changes | `log.info("User login successful, userID: {}", userId)` |
+| **DEBUG** | Detailed process, debug information | `log.debug("Querying user cache, key: {}", cacheKey)` |
+| **TRACE** | Low-level tracing, detailed data | `log.trace("SQL execution, params: {}", params)` |
+
+**9. Logging checklist**
+
+When writing code, you should check:
+
+- [ ] Using @Slf4j annotation
+- [ ] Key business operations logged (start, success, failure)
+- [ ] Method inputs recorded (except sensitive info)
+- [ ] Exception logs include stack traces
+- [ ] Using placeholders instead of string concatenation
+- [ ] Appropriate log level
+- [ ] Complete log information (including key context)
+- [ ] Not logging sensitive information (passwords, ID numbers, etc.)
+- [ ] Not printing excessive logs in loops
+- [ ] Important state changes recorded
+
+**10. Common mistakes**
+
+| Error Type | Wrong Approach | Correct Approach |
+|-----------|---------------|-----------------|
+| **No logging** | Key operations without logs | Log before and after operations |
+| **String concatenation** | `log.info("User: " + username)` | `log.info("User: {}", username)` |
+| **Lost stack trace** | `log.error(e.getMessage())` | `log.error("Operation failed", e)` |
+| **Sensitive info** | `log.info("Password: {}", password)` | Don't log passwords |
+| **Loop logging** | Log in every iteration | Aggregate and log or lower level |
+| **Wrong level** | INFO for debug info | DEBUG for debug info |
 
 ## Parameter Validation Standards
 

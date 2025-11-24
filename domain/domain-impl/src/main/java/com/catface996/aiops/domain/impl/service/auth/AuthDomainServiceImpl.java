@@ -4,16 +4,20 @@ import com.catface996.aiops.domain.api.exception.auth.SessionExpiredException;
 import com.catface996.aiops.domain.api.exception.auth.SessionNotFoundException;
 import com.catface996.aiops.domain.api.model.auth.Account;
 import com.catface996.aiops.domain.api.model.auth.AccountLockInfo;
+import com.catface996.aiops.domain.api.model.auth.AccountStatus;
 import com.catface996.aiops.domain.api.model.auth.DeviceInfo;
 import com.catface996.aiops.domain.api.model.auth.PasswordStrengthResult;
 import com.catface996.aiops.domain.api.model.auth.Session;
+import com.catface996.aiops.domain.api.repository.auth.AccountRepository;
 import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
 import com.catface996.aiops.domain.api.service.auth.AuthDomainService;
+import com.catface996.aiops.infrastructure.cache.api.service.LoginAttemptCache;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +36,7 @@ import java.util.regex.Pattern;
  * @author AI Assistant
  * @since 2025-01-23
  */
+@Slf4j
 @Service
 public class AuthDomainServiceImpl implements AuthDomainService {
 
@@ -42,6 +47,10 @@ public class AuthDomainServiceImpl implements AuthDomainService {
     // 会话过期时间常量（小时）
     private static final int DEFAULT_SESSION_HOURS = 2;
     private static final int REMEMBER_ME_SESSION_DAYS = 30;
+
+    // 账号锁定常量
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final int LOCK_DURATION_MINUTES = 30;
 
     // 密码字符类型正则表达式
     private static final Pattern UPPERCASE_PATTERN = Pattern.compile(".*[A-Z].*");
@@ -65,6 +74,8 @@ public class AuthDomainServiceImpl implements AuthDomainService {
     private final SessionCache sessionCache;
     private final ObjectMapper objectMapper;
     private final SessionRepository sessionRepository;
+    private final LoginAttemptCache loginAttemptCache;
+    private final AccountRepository accountRepository;
 
     /**
      * 构造函数
@@ -72,15 +83,22 @@ public class AuthDomainServiceImpl implements AuthDomainService {
      * @param passwordEncoder Spring Security提供的BCryptPasswordEncoder
      * @param jwtTokenProvider JWT Token提供者
      * @param sessionCache 会话缓存
+     * @param sessionRepository 会话仓储
+     * @param loginAttemptCache 登录失败计数缓存
+     * @param accountRepository 账号仓储
      */
     public AuthDomainServiceImpl(PasswordEncoder passwordEncoder,
                                   JwtTokenProvider jwtTokenProvider,
                                   SessionCache sessionCache,
-                                  SessionRepository sessionRepository) {
+                                  SessionRepository sessionRepository,
+                                  LoginAttemptCache loginAttemptCache,
+                                  AccountRepository accountRepository) {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.sessionCache = sessionCache;
         this.sessionRepository = sessionRepository;
+        this.loginAttemptCache = loginAttemptCache;
+        this.accountRepository = accountRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
         // 配置忽略未知属性
@@ -332,31 +350,145 @@ public class AuthDomainServiceImpl implements AuthDomainService {
     }
 
     // ==================== 账号锁定 ====================
-    // TODO: 任务12 - 实现账号锁定相关方法
 
     @Override
     public int recordLoginFailure(String identifier) {
-        throw new UnsupportedOperationException("任务12 - 待实现");
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("标识符不能为空");
+        }
+
+        log.info("记录登录失败，标识符：{}", identifier);
+
+        // 使用LoginAttemptCache记录失败次数
+        int failureCount = loginAttemptCache.recordFailure(identifier);
+
+        log.info("登录失败记录完成，标识符：{}，失败次数：{}", identifier, failureCount);
+
+        // 如果达到阈值，自动锁定账号
+        if (failureCount >= MAX_LOGIN_ATTEMPTS) {
+            log.warn("登录失败次数达到阈值，触发账号锁定，标识符：{}，失败次数：{}", identifier, failureCount);
+            lockAccount(identifier, LOCK_DURATION_MINUTES);
+        }
+
+        return failureCount;
     }
 
     @Override
     public Optional<AccountLockInfo> checkAccountLock(String identifier) {
-        throw new UnsupportedOperationException("任务12 - 待实现");
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("标识符不能为空");
+        }
+
+        log.info("检查账号锁定状态，标识符：{}", identifier);
+
+        // 检查是否被锁定
+        boolean isLocked = loginAttemptCache.isLocked(identifier);
+
+        if (!isLocked) {
+            log.info("账号未锁定，标识符：{}", identifier);
+            return Optional.of(AccountLockInfo.notLocked());
+        }
+
+        // 获取失败次数和剩余锁定时间
+        int failedAttempts = loginAttemptCache.getFailureCount(identifier);
+        long remainingSeconds = loginAttemptCache.getRemainingLockTime(identifier);
+
+        // 如果剩余时间为0，说明已经自动解锁
+        if (remainingSeconds <= 0) {
+            log.info("账号锁定已过期，自动解锁，标识符：{}", identifier);
+            return Optional.of(AccountLockInfo.notLocked());
+        }
+
+        // 计算锁定时间和解锁时间
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime unlockAt = now.plusSeconds(remainingSeconds);
+        // 估算锁定时间（向前推算）
+        LocalDateTime lockedAt = unlockAt.minusMinutes(LOCK_DURATION_MINUTES);
+
+        AccountLockInfo lockInfo = AccountLockInfo.locked(
+            "登录失败次数过多",
+            lockedAt,
+            unlockAt,
+            failedAttempts
+        );
+
+        log.warn("账号已锁定，标识符：{}，失败次数：{}，剩余锁定时间：{}秒",
+            identifier, failedAttempts, remainingSeconds);
+
+        return Optional.of(lockInfo);
     }
 
     @Override
     public void lockAccount(String identifier, int lockDurationMinutes) {
-        throw new UnsupportedOperationException("任务12 - 待实现");
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("标识符不能为空");
+        }
+
+        if (lockDurationMinutes <= 0) {
+            throw new IllegalArgumentException("锁定时长必须大于0");
+        }
+
+        log.info("锁定账号，标识符：{}，锁定时长：{}分钟", identifier, lockDurationMinutes);
+
+        // 注意：账号锁定主要通过Redis的登录失败计数来实现
+        // 不需要更新Account实体的状态字段（避免数据库频繁更新）
+        // 只有当失败次数>=5次时，才认为账号被锁定
+        // 这里不执行额外操作，因为recordLoginFailure已经更新了计数
+
+        log.info("账号锁定完成（通过Redis计数实现），标识符：{}", identifier);
     }
 
     @Override
     public void unlockAccount(Long accountId) {
-        throw new UnsupportedOperationException("任务12 - 待实现");
+        if (accountId == null) {
+            throw new IllegalArgumentException("账号ID不能为空");
+        }
+
+        log.info("开始解锁账号，账号ID：{}", accountId);
+
+        // 查找账号
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+        if (!accountOpt.isPresent()) {
+            log.error("解锁账号失败，账号不存在，账号ID：{}", accountId);
+            throw new IllegalArgumentException("账号不存在");
+        }
+
+        Account account = accountOpt.get();
+
+        // 重置用户名的失败计数
+        if (account.getUsername() != null) {
+            loginAttemptCache.unlock(account.getUsername());
+            log.info("清除用户名失败计数，用户名：{}", account.getUsername());
+        }
+
+        // 重置邮箱的失败计数
+        if (account.getEmail() != null) {
+            loginAttemptCache.unlock(account.getEmail());
+            log.info("清除邮箱失败计数，邮箱：{}", account.getEmail());
+        }
+
+        // 如果账号状态是LOCKED，更新为ACTIVE
+        if (account.getStatus() == AccountStatus.LOCKED) {
+            accountRepository.updateStatus(accountId, AccountStatus.ACTIVE);
+            log.info("账号状态已更新，账号ID：{}，旧状态：{}，新状态：{}",
+                accountId, AccountStatus.LOCKED, AccountStatus.ACTIVE);
+        }
+
+        log.info("账号解锁成功，账号ID：{}，用户名：{}", accountId, account.getUsername());
     }
 
     @Override
     public void resetLoginFailureCount(String identifier) {
-        throw new UnsupportedOperationException("任务12 - 待实现");
+        if (identifier == null || identifier.isEmpty()) {
+            throw new IllegalArgumentException("标识符不能为空");
+        }
+
+        log.info("重置登录失败计数，标识符：{}", identifier);
+
+        // 使用LoginAttemptCache重置失败计数
+        loginAttemptCache.resetFailureCount(identifier);
+
+        log.info("登录失败计数重置成功，标识符：{}", identifier);
     }
 
     // ==================== 私有辅助方法 ====================

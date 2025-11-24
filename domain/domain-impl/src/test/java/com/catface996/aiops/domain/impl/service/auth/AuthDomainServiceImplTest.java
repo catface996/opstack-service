@@ -1,7 +1,9 @@
 package com.catface996.aiops.domain.impl.service.auth;
 
 import com.catface996.aiops.domain.api.model.auth.PasswordStrengthResult;
+import com.catface996.aiops.domain.api.repository.auth.AccountRepository;
 import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
+import com.catface996.aiops.infrastructure.cache.api.service.LoginAttemptCache;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,12 +36,14 @@ class AuthDomainServiceImplTest {
     void setUp() {
         // 使用BCryptPasswordEncoder，Work Factor = 10（与生产环境一致）
         passwordEncoder = new BCryptPasswordEncoder(10);
-        // Mock依赖（Task 11新增）
+        // Mock依赖
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         SessionCache sessionCache = mock(SessionCache.class);
         SessionRepository sessionRepository = mock(SessionRepository.class);
+        LoginAttemptCache loginAttemptCache = mock(LoginAttemptCache.class);
+        AccountRepository accountRepository = mock(AccountRepository.class);
         when(sessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        authDomainService = new AuthDomainServiceImpl(passwordEncoder, jwtTokenProvider, sessionCache, sessionRepository);
+        authDomainService = new AuthDomainServiceImpl(passwordEncoder, jwtTokenProvider, sessionCache, sessionRepository, loginAttemptCache, accountRepository);
     }
 
     @Nested
