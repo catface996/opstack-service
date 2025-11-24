@@ -74,7 +74,7 @@
   - _依赖: 任务1_
   - _工时: 0.5小时_
 
-- [ ] 4. 定义领域服务接口
+- [x] 4. 定义领域服务接口
   - 定义 AuthDomainService 接口（密码管理、会话管理、账号锁定）
   - 定义 AccountRepository 接口（账号数据访问）
   - 定义 SessionRepository 接口（会话数据访问）
