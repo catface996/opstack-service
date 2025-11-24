@@ -1,15 +1,22 @@
 package com.catface996.aiops.domain.api.model.auth;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 /**
  * 会话实体
- * 
+ *
  * 用于维护用户登录状态
- * 
+ *
  * @author AI Assistant
  * @since 2025-01-23
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonAutoDetect(getterVisibility = JsonAutoDetect.Visibility.NONE,
+                isGetterVisibility = JsonAutoDetect.Visibility.NONE,
+                fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Session {
     
     /**
@@ -60,45 +67,49 @@ public class Session {
     
     /**
      * 判断会话是否已过期
-     * 
+     *
      * @return true if session is expired, false otherwise
      */
+    @JsonIgnore
     public boolean isExpired() {
         if (expiresAt == null) {
             return true;
         }
         return LocalDateTime.now().isAfter(expiresAt);
     }
-    
+
     /**
      * 判断会话是否有效
-     * 
+     *
      * 会话有效的条件：
      * 1. 会话未过期
-     * 
+     *
      * @return true if session is valid, false otherwise
      */
+    @JsonIgnore
     public boolean isValid() {
         return !isExpired();
     }
-    
+
     /**
      * 获取会话剩余有效时间（秒）
-     * 
+     *
      * @return remaining seconds, or 0 if expired
      */
+    @JsonIgnore
     public long getRemainingSeconds() {
         if (isExpired()) {
             return 0;
         }
         return java.time.Duration.between(LocalDateTime.now(), expiresAt).getSeconds();
     }
-    
+
     /**
      * 获取会话剩余有效时间（分钟）
-     * 
+     *
      * @return remaining minutes, or 0 if expired
      */
+    @JsonIgnore
     public long getRemainingMinutes() {
         return getRemainingSeconds() / 60;
     }
