@@ -104,7 +104,7 @@
   - _依赖: 任务2_
   - _工时: 1小时_
 
-- [ ] 6. 实现数据访问层
+- [x] 6. 实现数据访问层
   - 实现 AccountRepository（使用 MyBatis-Plus）
   - 实现 SessionRepository（降级方案）
   - 实现所有 CRUD 方法（findById, findByUsername, findByEmail, save, delete 等）
