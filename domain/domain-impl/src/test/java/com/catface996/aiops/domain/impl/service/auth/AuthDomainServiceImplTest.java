@@ -1,6 +1,7 @@
 package com.catface996.aiops.domain.impl.service.auth;
 
 import com.catface996.aiops.domain.api.model.auth.PasswordStrengthResult;
+import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +37,9 @@ class AuthDomainServiceImplTest {
         // Mock依赖（Task 11新增）
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         SessionCache sessionCache = mock(SessionCache.class);
-        authDomainService = new AuthDomainServiceImpl(passwordEncoder, jwtTokenProvider, sessionCache);
+        SessionRepository sessionRepository = mock(SessionRepository.class);
+        when(sessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        authDomainService = new AuthDomainServiceImpl(passwordEncoder, jwtTokenProvider, sessionCache, sessionRepository);
     }
 
     @Nested

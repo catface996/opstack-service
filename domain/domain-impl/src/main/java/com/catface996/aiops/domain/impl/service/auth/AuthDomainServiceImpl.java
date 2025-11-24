@@ -7,6 +7,7 @@ import com.catface996.aiops.domain.api.model.auth.AccountLockInfo;
 import com.catface996.aiops.domain.api.model.auth.DeviceInfo;
 import com.catface996.aiops.domain.api.model.auth.PasswordStrengthResult;
 import com.catface996.aiops.domain.api.model.auth.Session;
+import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
 import com.catface996.aiops.domain.api.service.auth.AuthDomainService;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
@@ -63,6 +64,7 @@ public class AuthDomainServiceImpl implements AuthDomainService {
     private final JwtTokenProvider jwtTokenProvider;
     private final SessionCache sessionCache;
     private final ObjectMapper objectMapper;
+    private final SessionRepository sessionRepository;
 
     /**
      * 构造函数
@@ -73,10 +75,12 @@ public class AuthDomainServiceImpl implements AuthDomainService {
      */
     public AuthDomainServiceImpl(PasswordEncoder passwordEncoder,
                                   JwtTokenProvider jwtTokenProvider,
-                                  SessionCache sessionCache) {
+                                  SessionCache sessionCache,
+                                  SessionRepository sessionRepository) {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.sessionCache = sessionCache;
+        this.sessionRepository = sessionRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
         // 配置忽略未知属性
@@ -259,18 +263,13 @@ public class AuthDomainServiceImpl implements AuthDomainService {
             LocalDateTime.now()
         );
 
-        // 序列化Session为JSON
-        String sessionData;
-        try {
-            sessionData = objectMapper.writeValueAsString(session);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("会话序列化失败", e);
-        }
+        // 保存到仓储（MySQL作为兜底）
+        Session persistedSession = sessionRepository.save(session);
 
-        // 保存到SessionCache
-        sessionCache.save(sessionId, sessionData, expiresAt, account.getId());
+        // 同步缓存
+        cacheSession(persistedSession);
 
-        return session;
+        return persistedSession;
     }
 
     @Override
@@ -279,24 +278,18 @@ public class AuthDomainServiceImpl implements AuthDomainService {
             throw new IllegalArgumentException("会话ID不能为空");
         }
 
-        // 从SessionCache获取会话数据
-        Optional<String> sessionDataOpt = sessionCache.get(sessionId);
-        if (!sessionDataOpt.isPresent()) {
+        // 优先从缓存获取，缓存未命中则回源仓储
+        Optional<Session> sessionOpt = findSession(sessionId, true);
+        if (!sessionOpt.isPresent()) {
             throw SessionNotFoundException.notFound(sessionId);
         }
 
-        // 反序列化Session
-        Session session;
-        try {
-            session = objectMapper.readValue(sessionDataOpt.get(), Session.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("会话反序列化失败", e);
-        }
+        Session session = sessionOpt.get();
 
         // 检查会话是否过期
         if (session.isExpired()) {
-            // 删除过期的会话
-            sessionCache.delete(sessionId);
+            // 删除过期的会话（缓存 + 仓储）
+            removeSessionData(sessionId, session.getUserId());
             throw SessionExpiredException.expired();
         }
 
@@ -309,8 +302,12 @@ public class AuthDomainServiceImpl implements AuthDomainService {
             throw new IllegalArgumentException("会话ID不能为空");
         }
 
-        // 从SessionCache删除会话
-        sessionCache.delete(sessionId);
+        // 尝试获取会话以定位用户ID
+        Optional<Session> sessionOpt = findSession(sessionId, false);
+        Long userId = sessionOpt.map(Session::getUserId).orElse(null);
+
+        // 删除缓存与仓储记录
+        removeSessionData(sessionId, userId);
     }
 
     @Override
@@ -327,15 +324,11 @@ public class AuthDomainServiceImpl implements AuthDomainService {
             throw new IllegalArgumentException("新会话不能为空");
         }
 
-        // 查找用户的旧会话
-        Optional<String> oldSessionIdOpt = sessionCache.getSessionIdByUserId(account.getId());
+        // 删除缓存中的旧会话（如果存在）
+        sessionCache.deleteByUserId(account.getId());
 
-        // 如果存在旧会话，使其失效
-        if (oldSessionIdOpt.isPresent()) {
-            String oldSessionId = oldSessionIdOpt.get();
-            // 删除旧会话（会话互斥）
-            sessionCache.delete(oldSessionId);
-        }
+        // 删除仓储中的旧会话
+        sessionRepository.deleteByUserId(account.getId());
     }
 
     // ==================== 账号锁定 ====================
@@ -364,5 +357,93 @@ public class AuthDomainServiceImpl implements AuthDomainService {
     @Override
     public void resetLoginFailureCount(String identifier) {
         throw new UnsupportedOperationException("任务12 - 待实现");
+    }
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 将Session写入缓存
+     */
+    private void cacheSession(Session session) {
+        if (session == null) {
+            return;
+        }
+        if (session.getId() == null || session.getUserId() == null || session.getExpiresAt() == null) {
+            return;
+        }
+
+        String sessionData = serializeSession(session);
+        sessionCache.save(session.getId(), sessionData, session.getExpiresAt(), session.getUserId());
+    }
+
+    /**
+     * 查找会话
+     *
+     * @param sessionId 会话ID
+     * @param refreshCacheFromRepository 是否在回源仓储后刷新缓存
+     */
+    private Optional<Session> findSession(String sessionId, boolean refreshCacheFromRepository) {
+        Optional<Session> sessionFromCache = getSessionFromCache(sessionId);
+        if (sessionFromCache.isPresent()) {
+            return sessionFromCache;
+        }
+
+        Optional<Session> sessionFromRepository = sessionRepository.findById(sessionId);
+        if (sessionFromRepository == null) {
+            sessionFromRepository = Optional.empty();
+        }
+
+        if (refreshCacheFromRepository) {
+            sessionFromRepository.ifPresent(this::cacheSession);
+        }
+
+        return sessionFromRepository;
+    }
+
+    /**
+     * 从缓存中读取会话
+     */
+    private Optional<Session> getSessionFromCache(String sessionId) {
+        Optional<String> sessionDataOpt = sessionCache.get(sessionId);
+        if (sessionDataOpt == null || !sessionDataOpt.isPresent()) {
+            return Optional.empty();
+        }
+
+        Session session = deserializeSession(sessionDataOpt.get());
+        return Optional.of(session);
+    }
+
+    /**
+     * 序列化会话
+     */
+    private String serializeSession(Session session) {
+        try {
+            return objectMapper.writeValueAsString(session);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("会话序列化失败", e);
+        }
+    }
+
+    /**
+     * 反序列化会话
+     */
+    private Session deserializeSession(String sessionData) {
+        try {
+            return objectMapper.readValue(sessionData, Session.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("会话反序列化失败", e);
+        }
+    }
+
+    /**
+     * 删除缓存和仓储中的会话数据
+     */
+    private void removeSessionData(String sessionId, Long userId) {
+        if (userId != null) {
+            sessionCache.deleteByUserId(userId);
+        } else {
+            sessionCache.delete(sessionId);
+        }
+        sessionRepository.deleteById(sessionId);
     }
 }

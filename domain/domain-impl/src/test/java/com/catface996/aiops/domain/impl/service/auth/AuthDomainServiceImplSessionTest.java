@@ -7,6 +7,7 @@ import com.catface996.aiops.domain.api.model.auth.AccountRole;
 import com.catface996.aiops.domain.api.model.auth.AccountStatus;
 import com.catface996.aiops.domain.api.model.auth.DeviceInfo;
 import com.catface996.aiops.domain.api.model.auth.Session;
+import com.catface996.aiops.domain.api.repository.auth.SessionRepository;
 import com.catface996.aiops.infrastructure.cache.api.service.SessionCache;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -46,6 +47,7 @@ class AuthDomainServiceImplSessionTest {
     private PasswordEncoder passwordEncoder;
     private JwtTokenProvider jwtTokenProvider;
     private SessionCache sessionCache;
+    private SessionRepository sessionRepository;
     private ObjectMapper objectMapper;
 
     private Account testAccount;
@@ -57,9 +59,19 @@ class AuthDomainServiceImplSessionTest {
         passwordEncoder = new BCryptPasswordEncoder(10);
         jwtTokenProvider = mock(JwtTokenProvider.class);
         sessionCache = mock(SessionCache.class);
+        sessionRepository = mock(SessionRepository.class);
+
+        when(sessionCache.get(anyString())).thenReturn(Optional.empty());
+        when(sessionRepository.findById(anyString())).thenReturn(Optional.empty());
+        when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // 创建服务实例
-        authDomainService = new AuthDomainServiceImpl(passwordEncoder, jwtTokenProvider, sessionCache);
+        authDomainService = new AuthDomainServiceImpl(
+            passwordEncoder,
+            jwtTokenProvider,
+            sessionCache,
+            sessionRepository
+        );
 
         // 创建测试数据
         testAccount = new Account(
@@ -126,7 +138,8 @@ class AuthDomainServiceImplSessionTest {
                 false
             );
 
-            // 验证SessionCache保存调用
+            // 验证持久化与缓存保存调用
+            verify(sessionRepository, times(1)).save(any(Session.class));
             verify(sessionCache, times(1)).save(
                 eq(session.getId()),
                 anyString(),
@@ -159,6 +172,8 @@ class AuthDomainServiceImplSessionTest {
                 AccountRole.ROLE_USER.name(),
                 true
             );
+
+            verify(sessionRepository, times(1)).save(any(Session.class));
         }
 
         @Test
@@ -279,6 +294,40 @@ class AuthDomainServiceImplSessionTest {
             verify(sessionCache, times(1)).get(sessionId);
             // 验证不应该删除有效会话
             verify(sessionCache, never()).delete(sessionId);
+            verify(sessionCache, never()).deleteByUserId(anyLong());
+            verify(sessionRepository, never()).deleteById(anyString());
+        }
+
+        @Test
+        @DisplayName("缓存未命中时应该从仓储加载会话")
+        void shouldValidateSessionFromRepositoryWhenCacheMiss() {
+            // Given
+            String sessionId = "db-session-id";
+            Session persistentSession = new Session(
+                sessionId,
+                testAccount.getId(),
+                "mock-jwt-token",
+                LocalDateTime.now().plusHours(1),
+                testDeviceInfo,
+                LocalDateTime.now()
+            );
+
+            when(sessionCache.get(sessionId)).thenReturn(Optional.empty());
+            when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(persistentSession));
+
+            // When
+            Session result = authDomainService.validateSession(sessionId);
+
+            // Then
+            assertNotNull(result);
+            assertEquals(sessionId, result.getId());
+            verify(sessionRepository, times(1)).findById(sessionId);
+            verify(sessionCache, times(1)).save(
+                eq(sessionId),
+                anyString(),
+                eq(persistentSession.getExpiresAt()),
+                eq(testAccount.getId())
+            );
         }
 
         @Test
@@ -287,6 +336,7 @@ class AuthDomainServiceImplSessionTest {
             // Given
             String sessionId = "non-existent-session";
             when(sessionCache.get(sessionId)).thenReturn(Optional.empty());
+            when(sessionRepository.findById(sessionId)).thenReturn(Optional.empty());
 
             // When & Then
             assertThrows(SessionNotFoundException.class, () -> {
@@ -295,6 +345,7 @@ class AuthDomainServiceImplSessionTest {
 
             // 验证SessionCache被调用
             verify(sessionCache, times(1)).get(sessionId);
+            verify(sessionRepository, times(1)).findById(sessionId);
         }
 
         @Test
@@ -321,7 +372,8 @@ class AuthDomainServiceImplSessionTest {
 
             // 验证SessionCache被调用，且删除过期会话
             verify(sessionCache, times(1)).get(sessionId);
-            verify(sessionCache, times(1)).delete(sessionId);
+            verify(sessionCache, times(1)).deleteByUserId(testAccount.getId());
+            verify(sessionRepository, times(1)).deleteById(sessionId);
         }
 
         @Test
@@ -349,16 +401,25 @@ class AuthDomainServiceImplSessionTest {
 
         @Test
         @DisplayName("应该成功使会话失效")
-        void shouldInvalidateSession() {
+        void shouldInvalidateSession() throws JsonProcessingException {
             // Given
             String sessionId = "test-session-id";
+            Session session = new Session(
+                sessionId,
+                testAccount.getId(),
+                "mock-jwt-token",
+                LocalDateTime.now().plusHours(2),
+                testDeviceInfo,
+                LocalDateTime.now()
+            );
+            when(sessionCache.get(sessionId)).thenReturn(Optional.of(objectMapper.writeValueAsString(session)));
 
             // When
             authDomainService.invalidateSession(sessionId);
 
             // Then
-            // 验证SessionCache.delete被调用
-            verify(sessionCache, times(1)).delete(sessionId);
+            verify(sessionCache, times(1)).deleteByUserId(testAccount.getId());
+            verify(sessionRepository, times(1)).deleteById(sessionId);
         }
 
         @Test
@@ -388,7 +449,6 @@ class AuthDomainServiceImplSessionTest {
         @DisplayName("应该使旧会话失效")
         void shouldInvalidateOldSession() {
             // Given
-            String oldSessionId = "old-session-id";
             String newSessionId = "new-session-id";
 
             Session newSession = new Session(
@@ -400,17 +460,12 @@ class AuthDomainServiceImplSessionTest {
                 LocalDateTime.now()
             );
 
-            when(sessionCache.getSessionIdByUserId(testAccount.getId()))
-                .thenReturn(Optional.of(oldSessionId));
-
             // When
             authDomainService.handleSessionMutex(testAccount, newSession);
 
             // Then
-            // 验证获取旧会话ID
-            verify(sessionCache, times(1)).getSessionIdByUserId(testAccount.getId());
-            // 验证删除旧会话
-            verify(sessionCache, times(1)).delete(oldSessionId);
+            verify(sessionCache, times(1)).deleteByUserId(testAccount.getId());
+            verify(sessionRepository, times(1)).deleteByUserId(testAccount.getId());
         }
 
         @Test
@@ -428,17 +483,12 @@ class AuthDomainServiceImplSessionTest {
                 LocalDateTime.now()
             );
 
-            when(sessionCache.getSessionIdByUserId(testAccount.getId()))
-                .thenReturn(Optional.empty());
-
             // When
             authDomainService.handleSessionMutex(testAccount, newSession);
 
             // Then
-            // 验证获取旧会话ID
-            verify(sessionCache, times(1)).getSessionIdByUserId(testAccount.getId());
-            // 验证不应该删除任何会话
-            verify(sessionCache, never()).delete(anyString());
+            verify(sessionCache, times(1)).deleteByUserId(testAccount.getId());
+            verify(sessionRepository, times(1)).deleteByUserId(testAccount.getId());
         }
 
         @Test
