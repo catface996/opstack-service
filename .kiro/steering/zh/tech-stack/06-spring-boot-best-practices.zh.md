@@ -41,222 +41,207 @@ inclusion: manual
 ### 你应该使用的注入方式
 
 **推荐：构造器注入**
-```java
-@Service
-@RequiredArgsConstructor
-public class UserService {
-    private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-    
-    // Spring 自动注入，无需 @Autowired
-}
-```
+- 使用 Lombok 的 @RequiredArgsConstructor 注解
+- 将依赖声明为 `private final` 字段
+- Spring 自动通过构造器注入依赖
+- 无需 @Autowired 注解
 
 **不推荐：字段注入**
-```java
-@Service
-public class UserService {
-    @Autowired  // 不推荐
-    private UserRepository userRepository;
-}
-```
+- 不要在字段声明上使用 @Autowired
+- 使测试变得困难
+- 隐藏依赖关系
+- 可能导致循环依赖问题
 
 **为什么推荐构造器注入**：
-- 依赖关系明确
-- 便于单元测试
-- 保证依赖不可变
+- 依赖关系明确可见
+- 便于单元测试（可以注入 mock 对象）
+- 确保依赖不可变（final 字段）
 - 避免循环依赖
+- IDE 提供更好的支持
 
 ## 配置管理规范
 
 ### 你应该遵循的配置规则
 
 **1. 使用 application.yml 而不是 application.properties**
-- YAML 格式更清晰
+- YAML 格式更清晰易读
 - 支持层级结构
+- 更适合复杂配置
 - 便于管理
 
 **2. 多环境配置**
-- application.yml（公共配置）
-- application-dev.yml（开发环境）
-- application-test.yml（测试环境）
-- application-prod.yml（生产环境）
+应该创建的文件：
+- `application.yml` - 所有环境共享的通用配置
+- `application-dev.yml` - 开发环境特定配置
+- `application-test.yml` - 测试环境特定配置
+- `application-prod.yml` - 生产环境特定配置
+
+激活规则：
+- 使用 `spring.profiles.active` 指定激活的 profile
 
 **3. 配置属性绑定**
-- 使用 @ConfigurationProperties 绑定配置
-- 不要使用 @Value 注入大量配置
+- 使用 @ConfigurationProperties 绑定配置组
+- 定义配置类并添加适当的验证
+- 不要使用 @Value 注入多个相关配置
+- 配置类应该是不可变的（使用 final 字段）
 
 **4. 敏感信息处理**
-- 不要在配置文件中明文存储密码
-- 使用环境变量或配置中心
-- 使用 Jasypt 加密敏感信息
+必须遵守的规则：
+- 永远不要在配置文件中明文存储密码
+- 使用环境变量存储敏感数据
+- 使用 Spring Cloud Config 或类似工具实现配置中心
+- 考虑使用 Jasypt 加密配置文件中的敏感值
 
 ### 配置类规范
 
-**你应该遵循的配置类规则**：
+**配置类规则**：
 
-**1. 使用 @Configuration 标注配置类**
-```java
-@Configuration
-public class RedisConfig {
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        // 配置 RedisTemplate
-    }
-}
-```
+**1. 注解要求**
+- 使用 @Configuration 标注配置类
+- 配置类应该放在 config 包中
+- 每个 @Bean 方法创建一个 bean
 
 **2. 配置类命名**
-- 以 Config 结尾
-- 见名知意
-- 示例：RedisConfig、MybatisPlusConfig
+- 必须以 `Config` 后缀结尾
+- 名称应该自解释
+- 示例：RedisConfig、MybatisPlusConfig、SecurityConfig
 
 **3. 配置类位置**
-- 放在 config 包下
+- 放在 `config` 包下
 - 按功能模块组织
+- 相关配置放在一起
+
+**4. @Bean 方法规则**
+- 方法名应该描述正在创建的 bean
+- 在创建 bean 的方法上添加 @Bean 注解
+- 使用方法参数进行依赖注入
 
 ## Interface 层规范（HTTP Controller）
 
 ### 你应该遵循的 Controller 规则
 
 **1. Controller 位置**
-- 放在 Interface 层的 http 模块
-- Package：`com.{company}.{system}.http.controller`
+- 必须在 Interface 层的 http 模块中
+- Package 模式：`com.{company}.{system}.http.controller`
+- 按业务领域分组 controller
 
 **2. 使用 RESTful 风格**
-- GET：查询
-- POST：创建
-- PUT：更新
-- DELETE：删除
+映射规则：
+- GET：查询资源（只读操作）
+- POST：创建新资源
+- PUT：更新现有资源（完整更新）
+- PATCH：部分更新（可选，不需要可使用 PUT）
+- DELETE：删除资源
 
 **3. 统一返回格式**
-- 定义在 common 模块
-- 所有接口使用统一的 Result 格式
+- 在 common 模块定义 Result 类
+- 所有接口必须返回 Result<T> 类型
+- Result 应包含：code、message、data
+- 使用 Result.success() 和 Result.error() 工厂方法
 
 **4. 参数校验**
-- 使用 @Valid 或 @Validated 校验参数
-- 使用 JSR-303 注解（@NotNull、@NotBlank、@Size 等）
+- 在请求参数上使用 @Valid 或 @Validated
+- 在 DTO 类中使用 JSR-303 注解：
+  - @NotNull、@NotBlank、@NotEmpty 用于必填字段
+  - @Size 用于字符串长度验证
+  - @Min、@Max 用于数字范围验证
+  - @Email 用于邮箱格式验证
+  - @Pattern 用于正则表达式验证
 
 **5. Controller 职责**
-- 只负责接收请求和返回响应
-- 不包含业务逻辑
+Controller 应该做的：
+- 接收 HTTP 请求并提取参数
+- 验证请求参数
 - 调用 Application Service 处理业务
-- 进行 VO 和 DTO 之间的转换
+- 将 DTO 转换为 VO 用于响应
+- 返回统一的 Result 格式
+
+Controller 不应该做的：
+- 实现业务逻辑
+- 直接调用 Repository 或 Domain Service
+- 处理事务
+- 执行数据持久化操作
 
 **6. 统一异常处理**
-- 使用 @RestControllerAdvice
-- 放在 http 模块的 handler 包下
+- 使用 @RestControllerAdvice 进行全局异常处理
+- 将异常处理器放在 http 模块的 handler 包中
+- 使用特定的 @ExceptionHandler 方法处理不同异常类型
+- 适当记录异常日志
+- 向客户端返回友好的错误消息
 
 ### Controller 最佳实践
 
-**你应该这样编写 Controller**：
+**注解要求**：
+- 类级别使用 @RestController
+- @RequestMapping 设置基础路径
+- @RequiredArgsConstructor 用于依赖注入
+- @Validated 启用验证
 
-```java
-// Interface 层 - http 模块
-@RestController
-@RequestMapping("/api/users")
-@RequiredArgsConstructor
-@Validated
-public class UserController {
-    private final UserAppService userAppService;  // 调用 Application 层
-    
-    @GetMapping("/{id}")
-    public Result<UserVO> getUser(@PathVariable Long id) {
-        UserDTO dto = userAppService.getUserById(id);
-        return Result.success(convertToVO(dto));  // DTO → VO
-    }
-    
-    @PostMapping
-    public Result<Void> createUser(@Valid @RequestBody CreateUserRequest request) {
-        userAppService.createUser(request);
-        return Result.success();
-    }
-}
-```
+**方法设计**：
+- 每个方法处理一个 HTTP 端点
+- 方法名应该是动词（getUser、createOrder、updateProfile）
+- 使用 @PathVariable 处理路径参数
+- 使用 @RequestParam 处理查询参数
+- 使用 @RequestBody 处理请求体，并配合 @Valid 使用
+
+**转换规则**：
+- 将应用层 DTO 转换为表示层 VO
+- 不要向客户端暴露内部领域模型
+- 将转换逻辑放在私有方法或独立的转换器类中
 
 ## Application 层规范
 
 ### 你应该遵循的 Application Service 规则
 
 **1. Application Service 位置**
-- 接口：application-api 模块
-- 实现：application-impl 模块
+- 接口：application-api 模块（定义契约）
+- 实现：application-impl 模块（实现逻辑）
 - Package：`com.{company}.{system}.application.service`
 
 **2. 接口与实现分离**
+命名规范：
 - 接口命名：`XxxAppService`
 - 实现命名：`XxxAppServiceImpl`
+- 接口在 application-api 模块
+- 实现在 application-impl 模块
 
 **3. 事务管理**
-- 使用 @Transactional 管理事务
-- 事务范围最小化
-- 避免长事务
+- 在服务方法上使用 @Transactional 注解
+- 写操作指定 `rollbackFor = Exception.class`
+- 查询操作使用 `readOnly = true`
+- 尽可能缩小事务范围
+- 避免长时间运行的事务
 
 **4. Application Service 职责**
-- 编排业务流程
-- 调用 Domain Service（领域服务）
+Application Service 应该做的：
+- 编排业务工作流（协调）
+- 调用 Domain Service 处理业务逻辑
 - 调用 Infrastructure 层（Repository、Cache、MQ）
-- 进行 DTO 和 Domain Entity 之间的转换
-- 不包含核心业务逻辑（业务逻辑在 Domain 层）
+- 在 DTO 和 Domain Entity 之间转换
+- 处理事务边界
+- 记录审计日志
+
+Application Service 不应该做的：
+- 实现核心业务规则（委托给 Domain 层）
+- 直接操作数据库（使用 Repository）
+- 包含复杂的条件逻辑（封装到私有方法）
 
 **5. 异常处理**
-- 抛出业务异常
-- 不要吞掉异常
-- 使用自定义异常
+- 直接抛出业务异常（不要在主流程中捕获）
+- 让异常传播到全局异常处理器
+- 为不同错误场景使用自定义异常类
+- 在异常消息中包含上下文信息
 
 ### Application Service 最佳实践
 
-**你应该这样编写 Application Service**：
+**详细的 Application Service 编码规范，请参考**：`08-application-layer-best-practices.md`
 
-```java
-// Application API 模块
-public interface UserAppService {
-    UserDTO getUserById(Long id);
-    void createUser(CreateUserRequest request);
-}
-
-// Application Impl 模块
-@Service
-@RequiredArgsConstructor
-public class UserAppServiceImpl implements UserAppService {
-    private final UserRepository userRepository;  // Infrastructure 层
-    private final RedisTemplate<String, Object> redisTemplate;  // Infrastructure 层
-    private final UserDomainService userDomainService;  // Domain 层（如需要）
-    
-    @Override
-    @Transactional(readOnly = true)
-    public UserDTO getUserById(Long id) {
-        // 先查缓存
-        String key = "user:info:" + id;
-        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            return cached;
-        }
-        
-        // 查数据库
-        UserEntity entity = userRepository.findById(id)
-            .orElseThrow(() -> new BusinessException("用户不存在"));
-        
-        UserDTO dto = convertToDTO(entity);
-        
-        // 写缓存
-        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
-        
-        return dto;
-    }
-    
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void createUser(CreateUserRequest request) {
-        // 编排业务流程
-        // 1. 调用 Domain Service 处理核心业务逻辑
-        // 2. 调用 Repository 保存数据
-        UserEntity entity = new UserEntity();
-        // 设置属性
-        userRepository.save(entity);
-    }
-}
-```
+**关键原则**：
+- 主方法应该有 5-10 个清晰的步骤
+- 主方法中没有 if/else
+- 主方法中没有 try/catch（除特殊情况）
+- 将验证、转换、日志提取到私有方法
+- 每个私有方法应该有单一职责
 
 ## Domain 层规范
 
@@ -269,6 +254,7 @@ public class UserAppServiceImpl implements UserAppService {
 - Domain 层不依赖任何框架
 - Domain 层不依赖 Infrastructure 层
 - 核心业务逻辑在 Domain Service 中实现
+- 领域实体应该是富模型（不是贫血模型）
 
 ## Infrastructure 层规范（Repository）
 
@@ -277,74 +263,67 @@ public class UserAppServiceImpl implements UserAppService {
 **详见**：`05-ddd-multi-module-project-best-practices.md`
 
 **1. Repository 位置**
-- 接口：repository-api 模块
+- 接口：domain-api 或 repository-api 模块
 - 实现：mysql-impl 模块（或其他持久化实现）
 
 **2. Entity 和 PO 分离**
 - Entity：在 repository-api，纯 POJO，无框架注解
-- PO：在 mysql-impl，包含框架注解
+- PO（持久化对象）：在 mysql-impl，包含 MyBatis-Plus 注解
 - RepositoryImpl 负责 Entity 和 PO 之间的转换
 
 **3. 使用 MyBatis-Plus**
-- Mapper 接口操作 PO
-- Repository 接口操作 Entity
+- Mapper 接口操作 PO 对象
+- Repository 接口操作 Entity 对象
 - 配置类在 mysql-impl 模块
+- 使用 BaseMapper 进行常见 CRUD 操作
 
 **4. Repository 职责**
-- 只负责数据访问
-- 不包含业务逻辑
-- 提供领域对象的持久化和查询
+Repository 应该做的：
+- 为领域实体提供 CRUD 操作
+- 在 Entity 和 PO 之间转换
+- 执行数据库查询
+- 处理持久化关注点
+
+Repository 不应该做的：
+- 实现业务逻辑
+- 执行数据验证（应在 Domain 层）
+- 处理事务（在 Application 层处理）
 
 ## 异常处理规范
 
 ### 你应该遵循的异常处理规则
 
 **1. 自定义业务异常**
-```java
-public class BusinessException extends RuntimeException {
-    private Integer code;
-    
-    public BusinessException(String message) {
-        super(message);
-        this.code = 500;
-    }
-    
-    public BusinessException(Integer code, String message) {
-        super(message);
-        this.code = code;
-    }
-}
-```
+要求：
+- 继承 RuntimeException（非受检异常）
+- 包含错误代码字段
+- 包含错误消息
+- 提供多个构造函数以增加灵活性
+- 在同一个包中组织相关异常
 
 **2. 全局异常处理**
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-    
-    @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusinessException(BusinessException e) {
-        return Result.error(e.getCode(), e.getMessage());
-    }
-    
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Result<Void> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldError().getDefaultMessage();
-        return Result.error(400, message);
-    }
-    
-    @ExceptionHandler(Exception.class)
-    public Result<Void> handleException(Exception e) {
-        log.error("系统异常", e);
-        return Result.error(500, "系统异常");
-    }
-}
-```
+实现规则：
+- 使用 @RestControllerAdvice 注解
+- 放在 http 模块的 handler 包中
+- 分别处理不同的异常类型：
+  - 业务异常（返回特定错误代码和消息）
+  - 验证异常（返回验证错误）
+  - 系统异常（记录日志并返回通用错误）
+- 始终使用适当的级别记录异常
 
 **3. 异常处理原则**
-- 不要吞掉异常
-- 记录异常日志
-- 返回友好的错误信息
-- 不要暴露敏感信息
+- 不要吞掉异常（始终记录或重新抛出）
+- 记录异常时包含完整上下文信息
+- 向用户返回友好的错误消息
+- 不要向客户端暴露敏感信息或堆栈跟踪
+- 包含请求 ID/trace ID 以便调试
+
+**4. 异常层次结构**
+建议的结构：
+- BaseException（所有业务异常的根）
+- DomainException（领域特定错误）
+- InfrastructureException（持久化、网络错误）
+- ApplicationException（应用层错误）
 
 ## 日志规范
 
@@ -352,574 +331,390 @@ public class GlobalExceptionHandler {
 
 **1. 使用 SLF4J + Logback**
 - Spring Boot 默认集成
-- 使用 @Slf4j 注解（Lombok）
-- 不要使用 System.out.println
+- 在需要日志的类上使用 @Slf4j 注解（Lombok）
+- 永远不要使用 System.out.println 或 printStackTrace()
 
 **2. 日志级别**
-- ERROR：错误信息，系统异常
-- WARN：警告信息，潜在问题
-- INFO：重要信息，关键业务操作
-- DEBUG：调试信息，详细流程
-- TRACE：详细信息，底层追踪
+使用指南：
+- **ERROR**：系统异常，需要立即关注的操作失败
+- **WARN**：潜在问题，业务警告，可恢复的错误
+- **INFO**：重要业务操作，状态变更，主要里程碑
+- **DEBUG**：用于调试的详细过程信息
+- **TRACE**：非常详细的信息，通常在生产环境禁用
 
 **3. 日志内容原则**
-- ✅ 记录关键业务操作（登录、注册、支付等）
-- ✅ 记录方法入参和返回值（敏感信息除外）
-- ✅ 记录异常信息和堆栈
-- ✅ 记录性能指标（耗时、大小等）
-- ✅ 记录重要业务状态变更
-- ❌ 不要记录敏感信息（密码、身份证号、银行卡号等）
-- ❌ 不要在循环中打印大量日志
-- ❌ 不要使用字符串拼接（使用占位符）
+必须记录的内容：
+- 关键业务操作（登录、注册、支付、订单创建）
+- 方法入口及重要参数（敏感数据除外）
+- 方法出口及结果（敏感数据除外）
+- 异常信息及完整堆栈跟踪
+- 性能指标（关键操作的执行时间）
+- 重要业务状态变更
+- 安全相关事件
 
-**4. 关键业务操作日志**
+不得记录的内容：
+- 密码、令牌或 API 密钥
+- 个人身份证号（如身份证、护照等）
+- 信用卡或银行账号
+- 任何敏感个人信息
 
-**你必须在以下场景打印日志**：
+**4. 日志格式规范**
 
-**Domain Service（领域服务）层**：
-```java
-@Slf4j
-@Service
-public class AuthDomainServiceImpl implements AuthDomainService {
+**使用占位符，不要字符串拼接**：
+- 错误：`"用户登录，用户名：" + username`
+- 正确：`"用户登录，用户名：{}"` 配合占位符
 
-    @Override
-    public String encryptPassword(String rawPassword) {
-        if (rawPassword == null || rawPassword.isEmpty()) {
-            throw new IllegalArgumentException("原始密码不能为空");
-        }
-
-        log.info("开始加密密码");
-        String encrypted = passwordEncoder.encode(rawPassword);
-        log.info("密码加密完成，加密后长度：{}", encrypted.length());
-
-        return encrypted;
-    }
-
-    @Override
-    public Session createSession(Account account, boolean rememberMe, DeviceInfo deviceInfo) {
-        if (account == null) {
-            throw new IllegalArgumentException("账号不能为空");
-        }
-
-        log.info("开始创建会话，用户ID：{}，用户名：{}，rememberMe：{}，设备：{}",
-            account.getId(), account.getUsername(), rememberMe, deviceInfo.getDeviceType());
-
-        String sessionId = UUID.randomUUID().toString();
-        LocalDateTime expiresAt = rememberMe
-            ? LocalDateTime.now().plusDays(REMEMBER_ME_SESSION_DAYS)
-            : LocalDateTime.now().plusHours(DEFAULT_SESSION_HOURS);
-
-        String token = jwtTokenProvider.generateToken(
-            account.getId(),
-            account.getUsername(),
-            account.getRole() != null ? account.getRole().name() : "USER",
-            rememberMe
-        );
-
-        Session session = new Session(
-            sessionId,
-            account.getId(),
-            token,
-            expiresAt,
-            deviceInfo,
-            LocalDateTime.now()
-        );
-
-        Session persistedSession = sessionRepository.save(session);
-        cacheSession(persistedSession);
-
-        log.info("会话创建成功，会话ID：{}，用户ID：{}，过期时间：{}",
-            sessionId, account.getId(), expiresAt);
-
-        return persistedSession;
-    }
-
-    @Override
-    public int recordLoginFailure(String identifier) {
-        if (identifier == null || identifier.isEmpty()) {
-            throw new IllegalArgumentException("标识符不能为空");
-        }
-
-        log.info("记录登录失败，标识符：{}", identifier);
-
-        int failureCount = loginAttemptCache.recordFailure(identifier);
-
-        log.info("登录失败记录完成，标识符：{}，失败次数：{}", identifier, failureCount);
-
-        if (failureCount >= MAX_LOGIN_ATTEMPTS) {
-            log.warn("登录失败次数达到阈值，触发账号锁定，标识符：{}，失败次数：{}",
-                identifier, failureCount);
-            lockAccount(identifier, LOCK_DURATION_MINUTES);
-        }
-
-        return failureCount;
-    }
-
-    @Override
-    public void unlockAccount(Long accountId) {
-        if (accountId == null) {
-            throw new IllegalArgumentException("账号ID不能为空");
-        }
-
-        log.info("开始解锁账号，账号ID：{}", accountId);
-
-        Optional<Account> accountOpt = accountRepository.findById(accountId);
-        if (!accountOpt.isPresent()) {
-            log.error("解锁账号失败，账号不存在，账号ID：{}", accountId);
-            throw new IllegalArgumentException("账号不存在");
-        }
-
-        Account account = accountOpt.get();
-
-        if (account.getUsername() != null) {
-            loginAttemptCache.unlock(account.getUsername());
-            log.info("清除用户名失败计数，用户名：{}", account.getUsername());
-        }
-
-        if (account.getEmail() != null) {
-            loginAttemptCache.unlock(account.getEmail());
-            log.info("清除邮箱失败计数，邮箱：{}", account.getEmail());
-        }
-
-        if (account.getStatus() == AccountStatus.LOCKED) {
-            accountRepository.updateStatus(accountId, AccountStatus.ACTIVE);
-            log.info("账号状态已更新，账号ID：{}，旧状态：{}，新状态：{}",
-                accountId, AccountStatus.LOCKED, AccountStatus.ACTIVE);
-        }
-
-        log.info("账号解锁成功，账号ID：{}，用户名：{}", accountId, account.getUsername());
-    }
-}
-```
-
-**Application Service（应用服务）层**：
-```java
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class UserAppServiceImpl implements UserAppService {
-    private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserDTO getUserById(Long id) {
-        log.info("查询用户信息，用户ID：{}", id);
-
-        // 先查缓存
-        String key = "user:info:" + id;
-        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            log.info("从缓存获取用户信息，用户ID：{}", id);
-            return cached;
-        }
-
-        log.info("缓存未命中，从数据库查询用户信息，用户ID：{}", id);
-
-        // 查数据库
-        UserEntity entity = userRepository.findById(id)
-            .orElseThrow(() -> {
-                log.error("用户不存在，用户ID：{}", id);
-                return new BusinessException("用户不存在");
-            });
-
-        UserDTO dto = convertToDTO(entity);
-
-        // 写缓存
-        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
-        log.info("用户信息写入缓存，用户ID：{}，缓存TTL：30分钟", id);
-
-        log.info("查询用户信息成功，用户ID：{}，用户名：{}", id, dto.getUsername());
-
-        return dto;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void createUser(CreateUserRequest request) {
-        log.info("开始创建用户，用户名：{}，邮箱：{}", request.getUsername(), request.getEmail());
-
-        try {
-            // 业务逻辑
-            UserEntity entity = new UserEntity();
-            // 设置属性
-            userRepository.save(entity);
-
-            log.info("用户创建成功，用户ID：{}，用户名：{}", entity.getId(), entity.getUsername());
-        } catch (Exception e) {
-            log.error("用户创建失败，用户名：{}，邮箱：{}",
-                request.getUsername(), request.getEmail(), e);
-            throw e;
-        }
-    }
-}
-```
-
-**Repository（数据访问）层**：
-```java
-@Slf4j
-@Repository
-@RequiredArgsConstructor
-public class AccountRepositoryImpl implements AccountRepository {
-    private final AccountMapper accountMapper;
-
-    @Override
-    public Optional<Account> findById(Long id) {
-        log.info("查询账号，账号ID：{}", id);
-
-        AccountPO po = accountMapper.selectById(id);
-        if (po == null) {
-            log.info("账号不存在，账号ID：{}", id);
-            return Optional.empty();
-        }
-
-        Account account = convertToEntity(po);
-        log.info("查询账号成功，账号ID：{}，用户名：{}", id, account.getUsername());
-
-        return Optional.of(account);
-    }
-
-    @Override
-    public Account save(Account account) {
-        log.info("保存账号，用户名：{}，邮箱：{}", account.getUsername(), account.getEmail());
-
-        AccountPO po = convertToPO(account);
-
-        if (account.getId() == null) {
-            accountMapper.insert(po);
-            log.info("新增账号成功，账号ID：{}，用户名：{}", po.getId(), po.getUsername());
-        } else {
-            accountMapper.updateById(po);
-            log.info("更新账号成功，账号ID：{}，用户名：{}", po.getId(), po.getUsername());
-        }
-
-        return convertToEntity(po);
-    }
-}
-```
-
-**5. 日志格式规范**
-
-**使用占位符而不是字符串拼接**：
-```java
-// ❌ 错误：字符串拼接
-log.info("用户登录，用户名：" + username + "，IP：" + ip);
-
-// ✅ 正确：使用占位符
-log.info("用户登录，用户名：{}，IP：{}", username, ip);
-```
-
-**异常日志必须包含堆栈**：
-```java
-// ❌ 错误：丢失堆栈信息
-log.error("用户创建失败，错误：" + e.getMessage());
-
-// ✅ 正确：包含完整堆栈
-log.error("用户创建失败，用户名：{}", username, e);
-```
-
-**重要操作前后都要打印日志**：
-```java
-// ✅ 正确：操作前后都有日志
-log.info("开始发送邮件，收件人：{}", email);
-emailService.send(email, content);
-log.info("邮件发送成功，收件人：{}", email);
-```
-
-**6. 日志上下文信息**
-
-**关键信息要包含**：
-- 用户ID
-- 用户名
+**包含上下文信息**：
+必需的上下文字段：
+- 用户 ID（如果可用）
+- 用户名（如果可用）
 - 操作类型
-- 业务对象ID
-- IP地址（在 Controller 层）
-- 请求ID（Trace ID）
+- 业务对象 ID
+- 时间戳（日志框架自动添加）
 
-**示例**：
-```java
-log.info("用户登录成功，用户ID：{}，用户名：{}，IP：{}，设备：{}",
-    userId, username, ip, deviceType);
+可选的上下文字段：
+- IP 地址（在 Controller 层）
+- 请求 ID / Trace ID
+- 设备信息
+- 会话 ID
+
+**异常日志**：
+- 始终将异常对象作为最后一个参数
+- 不要只记录 e.getMessage() - 包含完整堆栈跟踪
+- 模式：`log.error("操作失败，上下文：{}", context, exception)`
+
+**性能日志**：
+- 在操作前记录开始时间
+- 操作后计算持续时间
+- 记录操作名称和持续时间
+- 模式：`"操作完成，耗时：{}ms"`
+
+**5. 审计日志格式**
+
+**审计日志是用于关键业务操作的结构化日志**：
+
+格式要求：
+```
+[审计日志] 操作描述 | 字段1=值1 | 字段2=值2 | timestamp=时间戳
 ```
 
-**7. 性能日志**
+规则：
+- 使用 `[审计日志]` 前缀标识
+- 使用管道符 `|` 分隔字段
+- 每个字段使用 `key=value` 格式
+- 始终包含 timestamp 字段
+- 提取到私有日志方法（logRegistrationSuccess、logLoginFailure 等）
 
-**记录关键操作耗时**：
-```java
-@Slf4j
-@Service
-public class OrderService {
-    public void createOrder(CreateOrderRequest request) {
-        long startTime = System.currentTimeMillis();
+需要审计日志的操作：
+- 用户注册、登录、登出
+- 账号锁定、解锁
+- 权限变更
+- 敏感数据访问
+- 关键配置修改
+- 财务操作（支付、转账、退款）
 
-        log.info("开始创建订单，用户ID：{}", request.getUserId());
+**6. 日志检查清单**
 
-        // 业务逻辑
+提交代码前，验证：
+- [ ] 在类上使用 @Slf4j 注解
+- [ ] 关键业务操作已记录日志（开始、成功、失败）
+- [ ] 记录了方法输入（敏感信息除外）
+- [ ] 异常日志包含完整堆栈跟踪
+- [ ] 使用占位符而不是字符串拼接
+- [ ] 选择了适当的日志级别
+- [ ] 包含了完整的上下文信息
+- [ ] 日志中没有敏感信息
+- [ ] 循环中没有打印过多日志
+- [ ] 记录了重要状态变更
+- [ ] 审计日志使用正确的结构化格式
 
-        long endTime = System.currentTimeMillis();
-        log.info("订单创建完成，订单ID：{}，耗时：{}ms", orderId, endTime - startTime);
-    }
-}
-```
+**7. 常见日志错误**
 
-**8. 日志级别使用指南**
-
-| 日志级别 | 使用场景 | 示例 |
-|---------|---------|------|
-| **ERROR** | 系统异常、业务失败 | `log.error("用户注册失败，用户名：{}", username, e)` |
-| **WARN** | 潜在问题、业务警告 | `log.warn("登录失败次数达到阈值，用户名：{}", username)` |
-| **INFO** | 关键业务操作、状态变更 | `log.info("用户登录成功，用户ID：{}", userId)` |
-| **DEBUG** | 详细流程、调试信息 | `log.debug("查询用户缓存，key：{}", cacheKey)` |
-| **TRACE** | 底层追踪、详细数据 | `log.trace("SQL执行，参数：{}", params)` |
-
-**9. 日志检查清单**
-
-在编写代码时，你应该检查：
-
-- [ ] 是否使用 @Slf4j 注解
-- [ ] 关键业务操作是否打印日志（开始、成功、失败）
-- [ ] 方法入参是否记录（敏感信息除外）
-- [ ] 异常日志是否包含堆栈
-- [ ] 是否使用占位符而不是字符串拼接
-- [ ] 日志级别是否合适
-- [ ] 日志信息是否完整（包含关键上下文）
-- [ ] 是否记录敏感信息（密码、身份证号等）
-- [ ] 循环中是否打印过多日志
-- [ ] 重要状态变更是否记录
-
-**10. 常见错误**
-
-| 错误类型 | 错误做法 | 正确做法 |
-|---------|---------|---------|
-| **没有日志** | 关键业务操作不打印日志 | 操作前后都打印日志 |
-| **字符串拼接** | `log.info("用户：" + username)` | `log.info("用户：{}", username)` |
-| **丢失堆栈** | `log.error(e.getMessage())` | `log.error("操作失败", e)` |
-| **敏感信息** | `log.info("密码：{}", password)` | 不记录密码等敏感信息 |
-| **循环日志** | 循环中每次都打印 | 汇总后打印或降低级别 |
-| **级别错误** | INFO 记录调试信息 | DEBUG 记录调试信息 |
+| 错误 | 错误做法 | 正确做法 | 原因 |
+|------|---------|---------|------|
+| 没有日志 | 关键操作没有日志 | 在关键操作前后记录日志 | 无法调试问题 |
+| 字符串拼接 | `"用户：" + username` | `"用户：{}"` 配合占位符 | 性能影响，难以阅读 |
+| 丢失堆栈 | `log.error(e.getMessage())` | `log.error("失败", e)` | 没有堆栈无法调试 |
+| 记录敏感信息 | `"密码：{}"` | 不记录密码 | 安全违规 |
+| 循环日志 | 每次迭代都记录 | 汇总后记录一次 | 性能影响，日志泛滥 |
+| 级别错误 | INFO 记录调试细节 | DEBUG 记录调试细节 | 污染生产日志 |
 
 ## 参数校验规范
 
 ### 你应该遵循的校验规则
 
-**1. 使用 JSR-303 注解**
-```java
-@Data
-public class CreateUserRequest {
-    @NotBlank(message = "用户名不能为空")
-    @Size(min = 3, max = 20, message = "用户名长度为3-20个字符")
-    private String username;
-    
-    @NotBlank(message = "密码不能为空")
-    @Size(min = 6, max = 20, message = "密码长度为6-20个字符")
-    private String password;
-    
-    @NotBlank(message = "邮箱不能为空")
-    @Email(message = "邮箱格式不正确")
-    private String email;
-    
-    @NotNull(message = "年龄不能为空")
-    @Min(value = 1, message = "年龄必须大于0")
-    @Max(value = 150, message = "年龄必须小于150")
-    private Integer age;
-}
-```
+**1. 在 DTO 中使用 JSR-303 注解**
+常用注解：
+- @NotNull：字段不能为 null
+- @NotBlank：字符串不能为 null、空或空白
+- @NotEmpty：集合不能为 null 或空
+- @Size(min, max)：字符串长度或集合大小验证
+- @Min、@Max：数字范围验证
+- @Email：邮箱格式验证
+- @Pattern：正则表达式验证
 
-**2. Controller 中启用校验**
-```java
-@PostMapping
-public Result<Void> createUser(@Valid @RequestBody CreateUserRequest request) {
-    userService.createUser(request);
-    return Result.success();
-}
-```
+**2. 在 Controller 中启用验证**
+- 在 @RequestBody 参数上添加 @Valid 或 @Validated
+- 在 controller 类上添加 @Validated 以启用方法参数验证
+- 在 @PathVariable、@RequestParam 上使用验证注解
 
-**3. 自定义校验注解**
-- 复杂校验逻辑使用自定义注解
+**3. 自定义验证注解**
+何时创建自定义验证器：
+- JSR-303 无法表达的复杂验证逻辑
+- 业务规则验证
+- 跨字段验证
+
+实现：
+- 创建带有 @Constraint 的注解
 - 实现 ConstraintValidator 接口
+- 在 isValid 方法中添加验证逻辑
+
+**4. 验证错误处理**
+- 全局异常处理器捕获 MethodArgumentNotValidException
+- 提取字段错误和错误消息
+- 以统一的 Result 格式返回验证错误
+- 包含每个违规的字段名和错误消息
 
 ## 事务管理规范
 
 ### 你应该遵循的事务规则
 
 **1. 使用 @Transactional 注解**
-```java
-@Transactional(rollbackFor = Exception.class)
-public void createOrder(CreateOrderRequest request) {
-    // 业务逻辑
-}
-```
+放置位置：
+- 在服务层方法上（Application Service 或 Domain Service）
+- 永远不要在 Controller 方法上
+- 永远不要在 Repository 方法上
 
 **2. 事务属性**
-- rollbackFor：指定回滚的异常类型（建议 Exception.class）
-- readOnly：只读事务（查询操作）
-- propagation：事务传播行为
-- isolation：事务隔离级别
+必需的属性：
+- 写操作使用 `rollbackFor = Exception.class`（确保所有异常都触发回滚）
+- 查询操作使用 `readOnly = true`（优化）
 
-**3. 事务范围**
-- 事务范围最小化
-- 避免长事务
+可选属性：
+- `propagation`：事务传播行为（默认 REQUIRED 通常就够了）
+- `isolation`：事务隔离级别（除非有特定要求，否则使用默认值）
+- `timeout`：事务超时时间（秒）（用于长时间运行的操作）
+
+**3. 事务范围最佳实践**
+- 尽可能缩短事务时间
 - 不要在事务中调用远程服务
+- 不要在事务中执行重计算
+- 不要在事务中进行文件 I/O
+- 最小化事务内的数据库操作
 
 **4. 事务失效场景**
-- 方法不是 public
-- 同类方法调用（使用 this 调用）
-- 异常被捕获未抛出
-- 数据库不支持事务
+@Transactional 不起作用的常见原因：
+- 方法不是 public（Spring AOP 需要 public 方法）
+- 同类方法调用（this.method()）绕过代理
+- 异常被捕获且未重新抛出
+- 数据库不支持事务（某些存储引擎）
+- 错误的异常类型（受检异常需要显式 rollbackFor）
 
 ## 性能优化规范
 
-### 你应该遵循的性能优化原则
+### 你应该遵循的性能优化规则
 
-**1. 使用缓存**
-- 使用 @Cacheable、@CachePut、@CacheEvict 注解
-- 合理设置缓存过期时间
-- 防止缓存穿透、击穿、雪崩
+**1. 策略性使用缓存**
+何时缓存：
+- 频繁访问的数据
+- 昂贵的计算结果
+- 不经常变化的数据库查询结果
+
+缓存策略：
+- 读操作使用 @Cacheable
+- 更新操作使用 @CachePut
+- 删除操作使用 @CacheEvict
+- 设置适当的 TTL（生存时间）
+- 为关键数据实现缓存预热
+
+缓存注意事项：
+- 防止缓存穿透（缓存 null 值，设置短 TTL）
+- 防止缓存击穿（对热点键使用锁）
+- 防止缓存雪崩（随机化过期时间）
 
 **2. 异步处理**
-- 使用 @Async 注解
-- 配置线程池
-- 适合：发送邮件、短信、日志记录
+使用 @Async 的场景：
+- 发送邮件或短信
+- 文件上传/下载处理
+- 日志记录（非关键）
+- 通知分发
+
+要求：
+- 使用 @EnableAsync 启用异步
+- 配置自定义线程池
+- 正确处理异步异常
+- 不要将异步用于关键业务逻辑
 
 **3. 批量操作**
-- 批量插入、批量更新
-- 减少数据库交互次数
+何时使用批量操作：
+- 插入多条记录
+- 更新多条记录
+- 批量删除操作
 
-**4. 懒加载**
-- JPA 使用懒加载
+好处：
+- 减少数据库往返次数
+- 提高吞吐量
+- 更好的资源利用
+
+实现：
+- 使用 MyBatis-Plus 批量方法
+- 使用 JDBC 批量更新
+- 考虑批量大小（通常 100-1000 条记录）
+
+**4. 数据库优化**
+- 使用适当的索引
 - 避免 N+1 查询问题
+- 对关联使用延迟加载
+- 优化慢查询
+- 如需要可使用读写分离
 
 **5. 连接池配置**
+正确配置：
 - 数据库连接池（HikariCP）
 - Redis 连接池
-- HTTP 连接池
+- HTTP 连接池（RestTemplate、WebClient）
+
+关键设置：
+- 最大池大小（基于预期负载）
+- 最小空闲连接数
+- 连接超时
+- 空闲超时
+- 最大生命周期
 
 ## 安全规范
 
 ### 你应该遵循的安全规则
 
-**1. 参数校验**
-- 所有外部输入都要校验
-- 防止 SQL 注入、XSS 攻击
+**1. 输入验证**
+- 验证所有外部输入（参数、头部、文件）
+- 使用白名单验证（不是黑名单）
+- 清理用户输入以防止注入攻击
+- 验证文件上传（类型、大小、内容）
 
-**2. 认证授权**
-- 使用 Spring Security 或 JWT
-- 接口权限控制
+**2. 认证和授权**
+- 使用 Spring Security 或 JWT 进行认证
+- 实现基于角色的访问控制（RBAC）
+- 使用 @PreAuthorize 或 @Secured 进行方法级安全控制
+- 保护敏感端点
+- 实现适当的会话管理
 
-**3. 敏感信息**
-- 密码加密存储（BCrypt）
+**3. 敏感信息保护**
+- 使用 BCrypt 加密密码（永远不要明文或 MD5）
 - 不要在日志中记录敏感信息
-- 不要在响应中返回敏感信息
+- 不要在 API 响应中返回敏感数据
+- 显示时屏蔽敏感数据
+- 使用 HTTPS 进行数据传输
 
-**4. HTTPS**
-- 生产环境使用 HTTPS
-- 配置 SSL 证书
+**4. SQL 注入防护**
+- 始终使用参数化查询
+- 永远不要用用户输入拼接 SQL 字符串
+- 使用 MyBatis-Plus 或 JPA（它们防止 SQL 注入）
+- 验证和清理输入
+
+**5. XSS 防护**
+- 在 HTML 中渲染时转义用户输入
+- 使用内容安全策略（CSP）头
+- 验证和清理富文本内容
+- 在不同上下文使用适当的编码
+
+**6. CSRF 保护**
+- 在 Spring Security 中启用 CSRF 保护
+- 对状态改变操作使用 CSRF 令牌
+- 在服务器端验证 CSRF 令牌
 
 ## 测试规范
 
 ### 你应该遵循的测试规则
 
 **1. 单元测试**
-- 使用 JUnit 5
+- 使用 JUnit 5（Jupiter）
 - 使用 Mockito 模拟依赖
-- 测试覆盖率 > 80%
+- 目标代码覆盖率 >80%
+- 隔离测试单个单元（方法/类）
 
-**2. 集成测试**
-- 使用 @SpringBootTest
+**2. 测试命名**
+模式：`should_期望结果_when_条件`
+- 示例：`should_returnUser_when_userExists`
+- 示例：`should_throwException_when_userNotFound`
+
+**3. 测试结构**
+遵循 AAA 模式：
+- Arrange：设置测试数据和 mock
+- Act：执行被测方法
+- Assert：验证结果
+
+**4. 集成测试**
+- 使用 @SpringBootTest 获得完整上下文
 - 测试完整的业务流程
+- 使用真实数据库测试（testcontainers）
+- 验证各层之间的集成
 
-**3. 测试命名**
-- 方法名：should_期望结果_when_条件
-- 示例：should_returnUser_when_userExists
+**5. 测试检查清单**
+- [ ] 所有 public 方法都有单元测试
+- [ ] 测试了边界情况（null、空、边界值）
+- [ ] 测试了异常场景
+- [ ] 适当使用了 mock（不要测试 mock）
+- [ ] 测试是独立的（无共享状态）
+- [ ] 测试是确定性的（总是相同结果）
+- [ ] 测试名称清楚描述了测试内容
 
-## 常见错误和纠正方法
+## 代码质量检查清单
 
-### 你应该避免的错误
-
-| 错误类型 | 错误做法 | 正确做法 | 原因 |
-|---------|---------|---------|------|
-| **字段注入** | @Autowired 在字段上 | 构造器注入 | 不便于测试 |
-| **跨层调用** | Controller 直接调用 Repository | Controller → Service → Repository | 违反分层原则 |
-| **事务失效** | 同类方法调用 | 注入自身或使用 AopContext | 代理失效 |
-| **长事务** | 事务中调用远程服务 | 缩小事务范围 | 性能问题 |
-| **异常吞掉** | catch 后不处理 | 记录日志并抛出 | 问题难以排查 |
-| **配置硬编码** | 配置写在代码中 | 使用配置文件 | 不便于维护 |
-| **不设置过期时间** | 缓存永久有效 | 设置合理的过期时间 | 内存溢出 |
-| **SQL 注入** | 字符串拼接 SQL | 使用参数化查询 | 安全风险 |
-
-## 你的检查清单
-
-在编写 Spring Boot 代码时，你应该检查：
+编写 Spring Boot 代码时，请验证：
 
 ### 架构检查
 - [ ] 遵循分层架构（Controller → Service → Repository）
-- [ ] 使用构造器注入而不是字段注入
-- [ ] 启动类在根包下
-- [ ] 配置类在 config 包下
+- [ ] 使用构造器注入（不是字段注入）
+- [ ] 配置类在 config 包中
+- [ ] 适当的包组织
 
 ### Controller 检查
 - [ ] 使用 RESTful 风格
-- [ ] 统一返回格式
-- [ ] 参数校验（@Valid）
-- [ ] 不包含业务逻辑
+- [ ] 统一返回格式（Result<T>）
+- [ ] 参数验证（@Valid）
+- [ ] Controller 中没有业务逻辑
+- [ ] 适当的异常处理
 
 ### Service 检查
 - [ ] 接口与实现分离
-- [ ] 使用 @Transactional 管理事务
+- [ ] 使用正确设置的 @Transactional
 - [ ] 事务范围最小化
 - [ ] 异常处理正确
+- [ ] 业务逻辑在适当的层
 
 ### 配置检查
-- [ ] 使用 application.yml
-- [ ] 多环境配置
-- [ ] 敏感信息加密
-- [ ] 配置属性绑定
+- [ ] 使用 application.yml（不是 .properties）
+- [ ] 设置了多环境配置
+- [ ] 敏感信息加密或外部化
+- [ ] 使用了配置属性绑定
+
+### 日志检查
+- [ ] 使用 @Slf4j 注解
+- [ ] 适当的日志级别
+- [ ] 没有记录敏感信息
+- [ ] 使用占位符（不是字符串拼接）
+- [ ] 异常日志包含堆栈跟踪
 
 ### 安全检查
-- [ ] 参数校验
-- [ ] 认证授权
-- [ ] 密码加密
-- [ ] 不记录敏感信息
+- [ ] 实现了输入验证
+- [ ] 配置了认证和授权
+- [ ] 密码加密（BCrypt）
+- [ ] 防止了 SQL 注入
+- [ ] 保护了敏感数据
 
 ### 性能检查
-- [ ] 使用缓存
-- [ ] 异步处理
-- [ ] 批量操作
-- [ ] 连接池配置
+- [ ] 实现了缓存策略
+- [ ] 适当使用了异步处理
+- [ ] 批量数据使用批量操作
+- [ ] 配置了连接池
+- [ ] 优化了数据库查询
 
-## 关键原则总结
+## 总结
 
-### 架构原则
-1. **约定优于配置**：使用 Spring Boot 默认配置
-2. **分层架构**：Controller → Service → Repository
-3. **依赖注入**：使用构造器注入
-4. **接口与实现分离**：便于扩展和测试
-
-### 开发原则
-1. **统一返回格式**：便于前端处理
-2. **统一异常处理**：提高代码可维护性
-3. **参数校验**：保证数据安全
-4. **事务管理**：保证数据一致性
-
-### 性能原则
-1. **使用缓存**：减少数据库压力
-2. **异步处理**：提高响应速度
-3. **批量操作**：减少网络开销
-4. **连接池配置**：提高资源利用率
-
-### 安全原则
-1. **参数校验**：防止恶意输入
-2. **认证授权**：保护接口安全
-3. **敏感信息加密**：保护用户隐私
-4. **使用 HTTPS**：保证传输安全
-
-## 关键收益
-
-遵循这些规范，可以获得：
-
-- ✅ 清晰的代码结构，便于维护
-- ✅ 统一的开发规范，便于团队协作
-- ✅ 高性能的应用，提升用户体验
-- ✅ 安全的系统，保护用户数据
-- ✅ 易于测试的代码，保证质量
-- ✅ 快速的开发效率，降低成本
+遵循这些 Spring Boot 最佳实践可以确保：
+- ✅ 清晰可维护的代码结构
+- ✅ 团队间一致的开发标准
+- ✅ 高性能的应用程序
+- ✅ 保护用户数据的安全系统
+- ✅ 易于测试的代码库
+- ✅ 快速开发且少出错

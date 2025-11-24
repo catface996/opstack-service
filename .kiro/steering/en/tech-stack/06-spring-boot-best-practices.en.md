@@ -41,222 +41,207 @@ This document guides AI on how to correctly and efficiently use Spring Boot fram
 ### Injection methods you should use
 
 **Recommended: Constructor injection**
-```java
-@Service
-@RequiredArgsConstructor
-public class UserService {
-    private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-
-    // Spring automatically injects, no @Autowired needed
-}
-```
+- Use @RequiredArgsConstructor annotation from Lombok
+- Declare dependencies as `private final` fields
+- Spring automatically injects dependencies through constructor
+- No @Autowired annotation needed
 
 **Not recommended: Field injection**
-```java
-@Service
-public class UserService {
-    @Autowired  // Not recommended
-    private UserRepository userRepository;
-}
-```
+- Don't use @Autowired on field declarations
+- Makes testing difficult
+- Hides dependencies
+- May cause circular dependency issues
 
 **Why constructor injection is recommended**:
-- Dependencies are clear
-- Easy to unit test
-- Ensures dependencies are immutable
+- Dependencies are explicit and visible
+- Easy to unit test (can inject mocks)
+- Ensures dependencies are immutable (final fields)
 - Avoids circular dependencies
+- IDE provides better support
 
 ## Configuration Management Standards
 
 ### Configuration rules you should follow
 
 **1. Use application.yml instead of application.properties**
-- YAML format is clearer
+- YAML format is clearer and more readable
 - Supports hierarchical structure
-- Easy to manage
+- Better for complex configurations
+- Easier to manage
 
 **2. Multi-environment configuration**
-- application.yml (common configuration)
-- application-dev.yml (development environment)
-- application-test.yml (test environment)
-- application-prod.yml (production environment)
+Files you should create:
+- `application.yml` - Common configuration shared across all environments
+- `application-dev.yml` - Development environment specific settings
+- `application-test.yml` - Test environment specific settings
+- `application-prod.yml` - Production environment specific settings
+
+Activation rule:
+- Use `spring.profiles.active` to specify active profile
 
 **3. Configuration property binding**
-- Use @ConfigurationProperties to bind configurations
-- Don't use @Value to inject many configurations
+- Use @ConfigurationProperties for binding configuration groups
+- Define configuration classes with proper validation
+- Don't use @Value to inject multiple related configurations
+- Configuration classes should be immutable (use final fields)
 
 **4. Sensitive information handling**
-- Don't store passwords in plain text in configuration files
-- Use environment variables or configuration center
-- Use Jasypt to encrypt sensitive information
+Rules you must follow:
+- Never store passwords in plain text in configuration files
+- Use environment variables for sensitive data
+- Use Spring Cloud Config or similar for centralized configuration
+- Consider Jasypt for encrypting sensitive values in config files
 
 ### Configuration Class Standards
 
-**Configuration class rules you should follow**:
+**Configuration class rules**:
 
-**1. Use @Configuration to mark configuration classes**
-```java
-@Configuration
-public class RedisConfig {
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        // Configure RedisTemplate
-    }
-}
-```
+**1. Annotation requirements**
+- Use @Configuration to mark configuration classes
+- Configuration classes should be in config package
+- One @Bean method per bean to create
 
 **2. Configuration class naming**
-- End with Config
-- Self-explanatory
-- Example: RedisConfig, MybatisPlusConfig
+- Must end with `Config` suffix
+- Name should be self-explanatory
+- Examples: RedisConfig, MybatisPlusConfig, SecurityConfig
 
 **3. Configuration class location**
-- Placed in config package
+- Placed in `config` package
 - Organized by functional modules
+- Keep related configurations together
+
+**4. @Bean method rules**
+- Method name should describe the bean being created
+- Add @Bean annotation to methods that create beans
+- Use method parameters for dependency injection
 
 ## Interface Layer Standards (HTTP Controller)
 
 ### Controller rules you should follow
 
 **1. Controller location**
-- Placed in Interface layer's http module
-- Package: `com.{company}.{system}.http.controller`
+- Must be in Interface layer's http module
+- Package pattern: `com.{company}.{system}.http.controller`
+- Group controllers by business domain
 
 **2. Use RESTful style**
-- GET: Query
-- POST: Create
-- PUT: Update
-- DELETE: Delete
+Mapping rules:
+- GET: Query resources (read-only operations)
+- POST: Create new resources
+- PUT: Update existing resources (full update)
+- PATCH: Partial update (optional, use PUT if not needed)
+- DELETE: Delete resources
 
 **3. Unified return format**
-- Defined in common module
-- All interfaces use unified Result format
+- Define Result class in common module
+- All interfaces must return Result<T> type
+- Result should include: code, message, data
+- Use Result.success() and Result.error() factory methods
 
 **4. Parameter validation**
-- Use @Valid or @Validated to validate parameters
-- Use JSR-303 annotations (@NotNull, @NotBlank, @Size, etc.)
+- Use @Valid or @Validated on request parameters
+- Use JSR-303 annotations in DTO classes:
+  - @NotNull, @NotBlank, @NotEmpty for required fields
+  - @Size for string length validation
+  - @Min, @Max for number range validation
+  - @Email for email format validation
+  - @Pattern for regex validation
 
 **5. Controller responsibilities**
-- Only responsible for receiving requests and returning responses
-- No business logic
+What Controller SHOULD do:
+- Receive HTTP requests and extract parameters
+- Validate request parameters
 - Call Application Service to handle business
-- Convert between VO and DTO
+- Convert DTO to VO for response
+- Return unified Result format
+
+What Controller SHOULD NOT do:
+- Implement business logic
+- Directly call Repository or Domain Service
+- Handle transactions
+- Perform data persistence operations
 
 **6. Unified exception handling**
-- Use @RestControllerAdvice
-- Placed in handler package of http module
+- Use @RestControllerAdvice for global exception handling
+- Place exception handler in handler package of http module
+- Handle different exception types with specific @ExceptionHandler methods
+- Log exceptions appropriately
+- Return friendly error messages to clients
 
 ### Controller Best Practices
 
-**You should write Controller like this**:
+**Annotation requirements**:
+- @RestController on class level
+- @RequestMapping for base path
+- @RequiredArgsConstructor for dependency injection
+- @Validated for enabling validation
 
-```java
-// Interface layer - http module
-@RestController
-@RequestMapping("/api/users")
-@RequiredArgsConstructor
-@Validated
-public class UserController {
-    private final UserAppService userAppService;  // Call Application layer
+**Method design**:
+- Each method handles one HTTP endpoint
+- Method names should be verbs (getUser, createOrder, updateProfile)
+- Use @PathVariable for path parameters
+- Use @RequestParam for query parameters
+- Use @RequestBody for request body with @Valid
 
-    @GetMapping("/{id}")
-    public Result<UserVO> getUser(@PathVariable Long id) {
-        UserDTO dto = userAppService.getUserById(id);
-        return Result.success(convertToVO(dto));  // DTO → VO
-    }
-
-    @PostMapping
-    public Result<Void> createUser(@Valid @RequestBody CreateUserRequest request) {
-        userAppService.createUser(request);
-        return Result.success();
-    }
-}
-```
+**Conversion rules**:
+- Convert application layer DTO to presentation layer VO
+- Don't expose internal domain models to clients
+- Keep conversion logic in private methods or separate converter classes
 
 ## Application Layer Standards
 
 ### Application Service rules you should follow
 
 **1. Application Service location**
-- Interface: application-api module
-- Implementation: application-impl module
+- Interface: application-api module (defines contract)
+- Implementation: application-impl module (implements logic)
 - Package: `com.{company}.{system}.application.service`
 
 **2. Separate interface and implementation**
+Naming conventions:
 - Interface naming: `XxxAppService`
 - Implementation naming: `XxxAppServiceImpl`
+- Interface in application-api module
+- Implementation in application-impl module
 
 **3. Transaction management**
-- Use @Transactional to manage transactions
-- Minimize transaction scope
-- Avoid long transactions
+- Use @Transactional annotation on service methods
+- Specify `rollbackFor = Exception.class` for write operations
+- Use `readOnly = true` for query operations
+- Keep transaction scope as small as possible
+- Avoid long-running transactions
 
 **4. Application Service responsibilities**
-- Orchestrate business flow
-- Call Domain Service (domain services)
+What Application Service SHOULD do:
+- Orchestrate business workflow (coordination)
+- Call Domain Services for business logic
 - Call Infrastructure layer (Repository, Cache, MQ)
 - Convert between DTO and Domain Entity
-- No core business logic (business logic in Domain layer)
+- Handle transaction boundaries
+- Record audit logs
+
+What Application Service SHOULD NOT do:
+- Implement core business rules (delegate to Domain layer)
+- Directly operate databases (use Repository)
+- Contain complex conditional logic (encapsulate in private methods)
 
 **5. Exception handling**
-- Throw business exceptions
-- Don't swallow exceptions
-- Use custom exceptions
+- Throw business exceptions directly (don't catch in main flow)
+- Let exceptions propagate to global exception handler
+- Use custom exception classes for different error scenarios
+- Include context information in exception messages
 
 ### Application Service Best Practices
 
-**You should write Application Service like this**:
+**For detailed Application Service coding standards, see**: `08-application-layer-best-practices.md`
 
-```java
-// Application API module
-public interface UserAppService {
-    UserDTO getUserById(Long id);
-    void createUser(CreateUserRequest request);
-}
-
-// Application Impl module
-@Service
-@RequiredArgsConstructor
-public class UserAppServiceImpl implements UserAppService {
-    private final UserRepository userRepository;  // Infrastructure layer
-    private final RedisTemplate<String, Object> redisTemplate;  // Infrastructure layer
-    private final UserDomainService userDomainService;  // Domain layer (if needed)
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserDTO getUserById(Long id) {
-        // Check cache first
-        String key = "user:info:" + id;
-        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            return cached;
-        }
-
-        // Query database
-        UserEntity entity = userRepository.findById(id)
-            .orElseThrow(() -> new BusinessException("User not found"));
-
-        UserDTO dto = convertToDTO(entity);
-
-        // Write to cache
-        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
-
-        return dto;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void createUser(CreateUserRequest request) {
-        // Orchestrate business flow
-        // 1. Call Domain Service to handle core business logic
-        // 2. Call Repository to save data
-        UserEntity entity = new UserEntity();
-        // Set properties
-        userRepository.save(entity);
-    }
-}
-```
+**Key principles**:
+- Main methods should have 5-10 clear steps
+- No if/else in main method flow
+- No try/catch in main method (except special cases)
+- Extract validation, conversion, logging to private methods
+- Each private method should have single responsibility
 
 ## Domain Layer Standards
 
@@ -269,6 +254,7 @@ public class UserAppServiceImpl implements UserAppService {
 - Domain layer doesn't depend on any framework
 - Domain layer doesn't depend on Infrastructure layer
 - Core business logic implemented in Domain Service
+- Domain entities should be rich models (not anemic)
 
 ## Infrastructure Layer Standards (Repository)
 
@@ -277,74 +263,67 @@ public class UserAppServiceImpl implements UserAppService {
 **See**: `05-ddd-multi-module-project-best-practices.md`
 
 **1. Repository location**
-- Interface: repository-api module
+- Interface: domain-api or repository-api module
 - Implementation: mysql-impl module (or other persistence implementation)
 
 **2. Separate Entity and PO**
 - Entity: in repository-api, pure POJO, no framework annotations
-- PO: in mysql-impl, contains framework annotations
+- PO (Persistent Object): in mysql-impl, contains MyBatis-Plus annotations
 - RepositoryImpl responsible for conversion between Entity and PO
 
 **3. Use MyBatis-Plus**
-- Mapper interface operates on PO
-- Repository interface operates on Entity
+- Mapper interface operates on PO objects
+- Repository interface operates on Entity objects
 - Configuration classes in mysql-impl module
+- Use BaseMapper for common CRUD operations
 
 **4. Repository responsibilities**
-- Only responsible for data access
-- No business logic
-- Provide persistence and queries for domain objects
+What Repository SHOULD do:
+- Provide CRUD operations for domain entities
+- Convert between Entity and PO
+- Execute database queries
+- Handle persistence concerns
+
+What Repository SHOULD NOT do:
+- Implement business logic
+- Perform data validation (should be in Domain layer)
+- Handle transactions (handled in Application layer)
 
 ## Exception Handling Standards
 
 ### Exception handling rules you should follow
 
 **1. Custom business exceptions**
-```java
-public class BusinessException extends RuntimeException {
-    private Integer code;
-
-    public BusinessException(String message) {
-        super(message);
-        this.code = 500;
-    }
-
-    public BusinessException(Integer code, String message) {
-        super(message);
-        this.code = code;
-    }
-}
-```
+Requirements:
+- Extend RuntimeException (unchecked exception)
+- Include error code field
+- Include error message
+- Provide multiple constructors for flexibility
+- Group related exceptions in same package
 
 **2. Global exception handling**
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-
-    @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusinessException(BusinessException e) {
-        return Result.error(e.getCode(), e.getMessage());
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Result<Void> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldError().getDefaultMessage();
-        return Result.error(400, message);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public Result<Void> handleException(Exception e) {
-        log.error("System exception", e);
-        return Result.error(500, "System exception");
-    }
-}
-```
+Implementation rules:
+- Use @RestControllerAdvice annotation
+- Place in handler package of http module
+- Handle different exception types separately:
+  - Business exceptions (return specific error code and message)
+  - Validation exceptions (return validation errors)
+  - System exceptions (log and return generic error)
+- Always log exceptions with appropriate level
 
 **3. Exception handling principles**
-- Don't swallow exceptions
-- Log exceptions
-- Return friendly error messages
-- Don't expose sensitive information
+- Don't swallow exceptions (always log or rethrow)
+- Log exceptions with full context information
+- Return friendly error messages to users
+- Don't expose sensitive information or stack traces to clients
+- Include request ID/trace ID for debugging
+
+**4. Exception hierarchy**
+Suggested structure:
+- BaseException (root of all business exceptions)
+- DomainException (domain-specific errors)
+- InfrastructureException (persistence, network errors)
+- ApplicationException (application layer errors)
 
 ## Logging Standards
 
@@ -352,574 +331,390 @@ public class GlobalExceptionHandler {
 
 **1. Use SLF4J + Logback**
 - Spring Boot integrates by default
-- Use @Slf4j annotation (Lombok)
-- Don't use System.out.println
+- Use @Slf4j annotation (Lombok) on classes that need logging
+- Never use System.out.println or printStackTrace()
 
 **2. Log levels**
-- ERROR: Error information, system exceptions
-- WARN: Warning information, potential issues
-- INFO: Important information, key business operations
-- DEBUG: Debug information, detailed process
-- TRACE: Detailed information, low-level tracing
+Usage guide:
+- **ERROR**: System exceptions, operation failures that need immediate attention
+- **WARN**: Potential issues, business warnings, recoverable errors
+- **INFO**: Important business operations, state changes, major milestones
+- **DEBUG**: Detailed process information for debugging
+- **TRACE**: Very detailed information, typically disabled in production
 
 **3. Logging content principles**
-- ✅ Record key business operations (login, registration, payment, etc.)
-- ✅ Record method inputs and return values (except sensitive info)
-- ✅ Record exception information and stack traces
-- ✅ Record performance metrics (time cost, size, etc.)
-- ✅ Record important business state changes
-- ❌ Don't record sensitive information (passwords, ID numbers, bank card numbers, etc.)
-- ❌ Don't print excessive logs in loops
-- ❌ Don't use string concatenation (use placeholders)
+What you MUST log:
+- Key business operations (login, registration, payment, order creation)
+- Method entry with important parameters (except sensitive data)
+- Method exit with results (except sensitive data)
+- Exception information with full stack traces
+- Performance metrics (execution time for critical operations)
+- Important business state changes
+- Security-related events
 
-**4. Key business operation logging**
+What you MUST NOT log:
+- Passwords, tokens, or API keys
+- Personal identification numbers (SSN, passport, etc.)
+- Credit card or bank account numbers
+- Any sensitive personal information
 
-**You MUST log in the following scenarios**:
+**4. Log format standards**
 
-**Domain Service Layer**:
-```java
-@Slf4j
-@Service
-public class AuthDomainServiceImpl implements AuthDomainService {
+**Use placeholders, not string concatenation**:
+- Wrong: `"User login, username: " + username`
+- Correct: `"User login, username: {}"` with placeholder
 
-    @Override
-    public String encryptPassword(String rawPassword) {
-        if (rawPassword == null || rawPassword.isEmpty()) {
-            throw new IllegalArgumentException("Raw password cannot be empty");
-        }
-
-        log.info("Starting password encryption");
-        String encrypted = passwordEncoder.encode(rawPassword);
-        log.info("Password encryption completed, encrypted length: {}", encrypted.length());
-
-        return encrypted;
-    }
-
-    @Override
-    public Session createSession(Account account, boolean rememberMe, DeviceInfo deviceInfo) {
-        if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
-        }
-
-        log.info("Starting session creation, userID: {}, username: {}, rememberMe: {}, device: {}",
-            account.getId(), account.getUsername(), rememberMe, deviceInfo.getDeviceType());
-
-        String sessionId = UUID.randomUUID().toString();
-        LocalDateTime expiresAt = rememberMe
-            ? LocalDateTime.now().plusDays(REMEMBER_ME_SESSION_DAYS)
-            : LocalDateTime.now().plusHours(DEFAULT_SESSION_HOURS);
-
-        String token = jwtTokenProvider.generateToken(
-            account.getId(),
-            account.getUsername(),
-            account.getRole() != null ? account.getRole().name() : "USER",
-            rememberMe
-        );
-
-        Session session = new Session(
-            sessionId,
-            account.getId(),
-            token,
-            expiresAt,
-            deviceInfo,
-            LocalDateTime.now()
-        );
-
-        Session persistedSession = sessionRepository.save(session);
-        cacheSession(persistedSession);
-
-        log.info("Session created successfully, sessionID: {}, userID: {}, expiresAt: {}",
-            sessionId, account.getId(), expiresAt);
-
-        return persistedSession;
-    }
-
-    @Override
-    public int recordLoginFailure(String identifier) {
-        if (identifier == null || identifier.isEmpty()) {
-            throw new IllegalArgumentException("Identifier cannot be empty");
-        }
-
-        log.info("Recording login failure, identifier: {}", identifier);
-
-        int failureCount = loginAttemptCache.recordFailure(identifier);
-
-        log.info("Login failure recorded, identifier: {}, failureCount: {}", identifier, failureCount);
-
-        if (failureCount >= MAX_LOGIN_ATTEMPTS) {
-            log.warn("Login failure threshold reached, triggering account lock, identifier: {}, failureCount: {}",
-                identifier, failureCount);
-            lockAccount(identifier, LOCK_DURATION_MINUTES);
-        }
-
-        return failureCount;
-    }
-
-    @Override
-    public void unlockAccount(Long accountId) {
-        if (accountId == null) {
-            throw new IllegalArgumentException("Account ID cannot be null");
-        }
-
-        log.info("Starting account unlock, accountID: {}", accountId);
-
-        Optional<Account> accountOpt = accountRepository.findById(accountId);
-        if (!accountOpt.isPresent()) {
-            log.error("Account unlock failed, account not found, accountID: {}", accountId);
-            throw new IllegalArgumentException("Account not found");
-        }
-
-        Account account = accountOpt.get();
-
-        if (account.getUsername() != null) {
-            loginAttemptCache.unlock(account.getUsername());
-            log.info("Cleared username failure count, username: {}", account.getUsername());
-        }
-
-        if (account.getEmail() != null) {
-            loginAttemptCache.unlock(account.getEmail());
-            log.info("Cleared email failure count, email: {}", account.getEmail());
-        }
-
-        if (account.getStatus() == AccountStatus.LOCKED) {
-            accountRepository.updateStatus(accountId, AccountStatus.ACTIVE);
-            log.info("Account status updated, accountID: {}, oldStatus: {}, newStatus: {}",
-                accountId, AccountStatus.LOCKED, AccountStatus.ACTIVE);
-        }
-
-        log.info("Account unlocked successfully, accountID: {}, username: {}", accountId, account.getUsername());
-    }
-}
-```
-
-**Application Service Layer**:
-```java
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class UserAppServiceImpl implements UserAppService {
-    private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserDTO getUserById(Long id) {
-        log.info("Querying user info, userID: {}", id);
-
-        // Check cache first
-        String key = "user:info:" + id;
-        UserDTO cached = (UserDTO) redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            log.info("User info retrieved from cache, userID: {}", id);
-            return cached;
-        }
-
-        log.info("Cache miss, querying from database, userID: {}", id);
-
-        // Query database
-        UserEntity entity = userRepository.findById(id)
-            .orElseThrow(() -> {
-                log.error("User not found, userID: {}", id);
-                return new BusinessException("User not found");
-            });
-
-        UserDTO dto = convertToDTO(entity);
-
-        // Write cache
-        redisTemplate.opsForValue().set(key, dto, 30, TimeUnit.MINUTES);
-        log.info("User info written to cache, userID: {}, TTL: 30 minutes", id);
-
-        log.info("User info query successful, userID: {}, username: {}", id, dto.getUsername());
-
-        return dto;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void createUser(CreateUserRequest request) {
-        log.info("Starting user creation, username: {}, email: {}", request.getUsername(), request.getEmail());
-
-        try {
-            // Business logic
-            UserEntity entity = new UserEntity();
-            // Set attributes
-            userRepository.save(entity);
-
-            log.info("User created successfully, userID: {}, username: {}", entity.getId(), entity.getUsername());
-        } catch (Exception e) {
-            log.error("User creation failed, username: {}, email: {}",
-                request.getUsername(), request.getEmail(), e);
-            throw e;
-        }
-    }
-}
-```
-
-**Repository Layer**:
-```java
-@Slf4j
-@Repository
-@RequiredArgsConstructor
-public class AccountRepositoryImpl implements AccountRepository {
-    private final AccountMapper accountMapper;
-
-    @Override
-    public Optional<Account> findById(Long id) {
-        log.info("Querying account, accountID: {}", id);
-
-        AccountPO po = accountMapper.selectById(id);
-        if (po == null) {
-            log.info("Account not found, accountID: {}", id);
-            return Optional.empty();
-        }
-
-        Account account = convertToEntity(po);
-        log.info("Account query successful, accountID: {}, username: {}", id, account.getUsername());
-
-        return Optional.of(account);
-    }
-
-    @Override
-    public Account save(Account account) {
-        log.info("Saving account, username: {}, email: {}", account.getUsername(), account.getEmail());
-
-        AccountPO po = convertToPO(account);
-
-        if (account.getId() == null) {
-            accountMapper.insert(po);
-            log.info("Account inserted successfully, accountID: {}, username: {}", po.getId(), po.getUsername());
-        } else {
-            accountMapper.updateById(po);
-            log.info("Account updated successfully, accountID: {}, username: {}", po.getId(), po.getUsername());
-        }
-
-        return convertToEntity(po);
-    }
-}
-```
-
-**5. Log format standards**
-
-**Use placeholders instead of string concatenation**:
-```java
-// ❌ Wrong: String concatenation
-log.info("User login, username: " + username + ", IP: " + ip);
-
-// ✅ Correct: Use placeholders
-log.info("User login, username: {}, IP: {}", username, ip);
-```
-
-**Exception logs must include stack traces**:
-```java
-// ❌ Wrong: Lost stack trace
-log.error("User creation failed, error: " + e.getMessage());
-
-// ✅ Correct: Include full stack trace
-log.error("User creation failed, username: {}", username, e);
-```
-
-**Log before and after important operations**:
-```java
-// ✅ Correct: Logs before and after operation
-log.info("Starting email send, recipient: {}", email);
-emailService.send(email, content);
-log.info("Email sent successfully, recipient: {}", email);
-```
-
-**6. Log context information**
-
-**Key information to include**:
-- User ID
-- Username
+**Include context information**:
+Required context fields:
+- User ID (if available)
+- Username (if available)
 - Operation type
-- Business object ID
+- Business object IDs
+- Timestamp (auto-added by logging framework)
+
+Optional context fields:
 - IP address (in Controller layer)
-- Request ID (Trace ID)
+- Request ID / Trace ID
+- Device information
+- Session ID
 
-**Example**:
-```java
-log.info("User login successful, userID: {}, username: {}, IP: {}, device: {}",
-    userId, username, ip, deviceType);
+**Exception logging**:
+- Always include exception object as last parameter
+- Don't just log e.getMessage() - include full stack trace
+- Pattern: `log.error("Operation failed, context: {}", context, exception)`
+
+**Performance logging**:
+- Record start time before operation
+- Calculate duration after operation
+- Log with operation name and duration
+- Pattern: `"Operation completed, timeCost: {}ms"`
+
+**5. Audit log format**
+
+**Audit logs are structured logs for critical business operations**:
+
+Format requirement:
+```
+[Audit Log] Operation Description | field1=value1 | field2=value2 | timestamp=timestamp
 ```
 
-**7. Performance logging**
+Rules:
+- Use `[Audit Log]` prefix for identification
+- Use pipe symbol `|` to separate fields
+- Each field uses `key=value` format
+- Always include timestamp field
+- Extract to private log methods (logRegistrationSuccess, logLoginFailure, etc.)
 
-**Record time cost of key operations**:
-```java
-@Slf4j
-@Service
-public class OrderService {
-    public void createOrder(CreateOrderRequest request) {
-        long startTime = System.currentTimeMillis();
+Operations requiring audit logs:
+- User registration, login, logout
+- Account lock, unlock
+- Permission changes
+- Sensitive data access
+- Critical configuration changes
+- Financial operations (payment, transfer, refund)
 
-        log.info("Starting order creation, userID: {}", request.getUserId());
+**6. Logging checklist**
 
-        // Business logic
-
-        long endTime = System.currentTimeMillis();
-        log.info("Order creation completed, orderID: {}, timeCost: {}ms", orderId, endTime - startTime);
-    }
-}
-```
-
-**8. Log level usage guide**
-
-| Log Level | Usage Scenario | Example |
-|-----------|---------------|---------|
-| **ERROR** | System exceptions, business failures | `log.error("User registration failed, username: {}", username, e)` |
-| **WARN** | Potential issues, business warnings | `log.warn("Login failure threshold reached, username: {}", username)` |
-| **INFO** | Key business operations, state changes | `log.info("User login successful, userID: {}", userId)` |
-| **DEBUG** | Detailed process, debug information | `log.debug("Querying user cache, key: {}", cacheKey)` |
-| **TRACE** | Low-level tracing, detailed data | `log.trace("SQL execution, params: {}", params)` |
-
-**9. Logging checklist**
-
-When writing code, you should check:
-
-- [ ] Using @Slf4j annotation
+Before committing code, verify:
+- [ ] Using @Slf4j annotation on classes
 - [ ] Key business operations logged (start, success, failure)
 - [ ] Method inputs recorded (except sensitive info)
-- [ ] Exception logs include stack traces
+- [ ] Exception logs include full stack traces
 - [ ] Using placeholders instead of string concatenation
-- [ ] Appropriate log level
-- [ ] Complete log information (including key context)
-- [ ] Not logging sensitive information (passwords, ID numbers, etc.)
+- [ ] Appropriate log level selected
+- [ ] Complete context information included
+- [ ] No sensitive information in logs
 - [ ] Not printing excessive logs in loops
 - [ ] Important state changes recorded
+- [ ] Audit logs use correct structured format
 
-**10. Common mistakes**
+**7. Common logging mistakes**
 
-| Error Type | Wrong Approach | Correct Approach |
-|-----------|---------------|-----------------|
-| **No logging** | Key operations without logs | Log before and after operations |
-| **String concatenation** | `log.info("User: " + username)` | `log.info("User: {}", username)` |
-| **Lost stack trace** | `log.error(e.getMessage())` | `log.error("Operation failed", e)` |
-| **Sensitive info** | `log.info("Password: {}", password)` | Don't log passwords |
-| **Loop logging** | Log in every iteration | Aggregate and log or lower level |
-| **Wrong level** | INFO for debug info | DEBUG for debug info |
+| Mistake | Wrong Approach | Correct Approach | Why |
+|---------|---------------|------------------|-----|
+| No logging | Key operations without logs | Log before and after critical operations | Impossible to debug issues |
+| String concatenation | `"User: " + username` | `"User: {}"` with placeholder | Performance impact, harder to read |
+| Lost stack trace | `log.error(e.getMessage())` | `log.error("Failed", e)` | Can't debug without stack trace |
+| Logging sensitive info | `"Password: {}"` | Don't log passwords | Security violation |
+| Loop logging | Log in every iteration | Aggregate and log once | Performance impact, log spam |
+| Wrong level | INFO for debug details | DEBUG for debug details | Clutters production logs |
 
 ## Parameter Validation Standards
 
 ### Validation rules you should follow
 
-**1. Use JSR-303 annotations**
-```java
-@Data
-public class CreateUserRequest {
-    @NotBlank(message = "Username cannot be empty")
-    @Size(min = 3, max = 20, message = "Username length must be 3-20 characters")
-    private String username;
-
-    @NotBlank(message = "Password cannot be empty")
-    @Size(min = 6, max = 20, message = "Password length must be 6-20 characters")
-    private String password;
-
-    @NotBlank(message = "Email cannot be empty")
-    @Email(message = "Email format incorrect")
-    private String email;
-
-    @NotNull(message = "Age cannot be empty")
-    @Min(value = 1, message = "Age must be greater than 0")
-    @Max(value = 150, message = "Age must be less than 150")
-    private Integer age;
-}
-```
+**1. Use JSR-303 annotations in DTOs**
+Common annotations:
+- @NotNull: Field cannot be null
+- @NotBlank: String cannot be null, empty, or whitespace
+- @NotEmpty: Collection cannot be null or empty
+- @Size(min, max): String length or collection size validation
+- @Min, @Max: Number range validation
+- @Email: Email format validation
+- @Pattern: Regex pattern validation
 
 **2. Enable validation in Controller**
-```java
-@PostMapping
-public Result<Void> createUser(@Valid @RequestBody CreateUserRequest request) {
-    userService.createUser(request);
-    return Result.success();
-}
-```
+- Add @Valid or @Validated on @RequestBody parameters
+- Add @Validated on controller class for method parameter validation
+- Use @PathVariable, @RequestParam with validation annotations
 
 **3. Custom validation annotations**
-- Use custom annotations for complex validation logic
+When to create custom validators:
+- Complex validation logic that JSR-303 cannot express
+- Business rule validation
+- Cross-field validation
+
+Implementation:
+- Create annotation with @Constraint
 - Implement ConstraintValidator interface
+- Add validation logic in isValid method
+
+**4. Validation error handling**
+- Global exception handler catches MethodArgumentNotValidException
+- Extract field errors and error messages
+- Return validation errors in unified Result format
+- Include field name and error message for each violation
 
 ## Transaction Management Standards
 
 ### Transaction rules you should follow
 
 **1. Use @Transactional annotation**
-```java
-@Transactional(rollbackFor = Exception.class)
-public void createOrder(CreateOrderRequest request) {
-    // Business logic
-}
-```
+Placement:
+- On service layer methods (Application Service or Domain Service)
+- Never on Controller methods
+- Never on Repository methods
 
 **2. Transaction properties**
-- rollbackFor: Specify exception types for rollback (recommend Exception.class)
-- readOnly: Read-only transaction (for query operations)
-- propagation: Transaction propagation behavior
-- isolation: Transaction isolation level
+Required attributes:
+- `rollbackFor = Exception.class` for write operations (ensures all exceptions trigger rollback)
+- `readOnly = true` for query operations (optimization)
 
-**3. Transaction scope**
-- Minimize transaction scope
-- Avoid long transactions
-- Don't call remote services in transactions
+Optional attributes:
+- `propagation`: Transaction propagation behavior (default REQUIRED is usually fine)
+- `isolation`: Transaction isolation level (use default unless specific requirement)
+- `timeout`: Transaction timeout in seconds (for long-running operations)
+
+**3. Transaction scope best practices**
+- Keep transactions as short as possible
+- Don't call remote services inside transactions
+- Don't perform heavy computations inside transactions
+- Don't do file I/O inside transactions
+- Minimize database operations within transaction
 
 **4. Transaction failure scenarios**
-- Method is not public
-- Same class method call (using this)
-- Exception caught and not thrown
-- Database doesn't support transactions
+Common reasons why @Transactional doesn't work:
+- Method is not public (Spring AOP requires public methods)
+- Same class method call (this.method()) bypasses proxy
+- Exception is caught and not rethrown
+- Database doesn't support transactions (some storage engines)
+- Wrong exception type (checked exceptions need explicit rollbackFor)
 
 ## Performance Optimization Standards
 
-### Performance optimization principles you should follow
+### Performance optimization rules you should follow
 
-**1. Use caching**
-- Use @Cacheable, @CachePut, @CacheEvict annotations
-- Set reasonable cache expiration times
-- Prevent cache penetration, breakdown, avalanche
+**1. Use caching strategically**
+When to cache:
+- Frequently accessed data
+- Expensive computation results
+- Database query results that change infrequently
+
+Caching strategies:
+- Use @Cacheable for read operations
+- Use @CachePut for update operations
+- Use @CacheEvict for delete operations
+- Set appropriate TTL (Time To Live)
+- Implement cache warming for critical data
+
+Cache considerations:
+- Prevent cache penetration (cache null values with short TTL)
+- Prevent cache breakdown (use locks for hot keys)
+- Prevent cache avalanche (randomize expiration times)
 
 **2. Asynchronous processing**
-- Use @Async annotation
-- Configure thread pool
-- Suitable for: sending emails, SMS, logging
+Use @Async for:
+- Sending emails or SMS
+- File upload/download processing
+- Log recording (non-critical)
+- Notification dispatching
+
+Requirements:
+- Enable async with @EnableAsync
+- Configure custom thread pool
+- Handle async exceptions properly
+- Don't use async for critical business logic
 
 **3. Batch operations**
-- Batch insert, batch update
-- Reduce database interaction frequency
+When to use batching:
+- Inserting multiple records
+- Updating multiple records
+- Bulk delete operations
 
-**4. Lazy loading**
-- JPA use lazy loading
+Benefits:
+- Reduces database round trips
+- Improves throughput
+- Better resource utilization
+
+Implementation:
+- Use MyBatis-Plus batch methods
+- Use JDBC batch updates
+- Consider batch size (typically 100-1000 records)
+
+**4. Database optimization**
+- Use appropriate indexes
 - Avoid N+1 query problems
+- Use lazy loading for associations
+- Optimize slow queries
+- Use read-write separation if needed
 
 **5. Connection pool configuration**
+Properly configure:
 - Database connection pool (HikariCP)
 - Redis connection pool
-- HTTP connection pool
+- HTTP connection pool (RestTemplate, WebClient)
+
+Key settings:
+- Maximum pool size (based on expected load)
+- Minimum idle connections
+- Connection timeout
+- Idle timeout
+- Max lifetime
 
 ## Security Standards
 
 ### Security rules you should follow
 
-**1. Parameter validation**
-- Validate all external inputs
-- Prevent SQL injection, XSS attacks
+**1. Input validation**
+- Validate all external inputs (parameters, headers, files)
+- Use whitelist validation (not blacklist)
+- Sanitize user input to prevent injection attacks
+- Validate file uploads (type, size, content)
 
 **2. Authentication and authorization**
-- Use Spring Security or JWT
-- Interface permission control
+- Use Spring Security or JWT for authentication
+- Implement role-based access control (RBAC)
+- Use @PreAuthorize or @Secured for method-level security
+- Protect sensitive endpoints
+- Implement proper session management
 
-**3. Sensitive information**
-- Encrypt password storage (BCrypt)
+**3. Sensitive information protection**
+- Encrypt passwords with BCrypt (never plain text or MD5)
 - Don't log sensitive information
-- Don't return sensitive information in responses
+- Don't return sensitive data in API responses
+- Mask sensitive data when displayed
+- Use HTTPS for data transmission
 
-**4. HTTPS**
-- Use HTTPS in production environment
-- Configure SSL certificates
+**4. SQL injection prevention**
+- Always use parameterized queries
+- Never concatenate SQL strings with user input
+- Use MyBatis-Plus or JPA (they prevent SQL injection)
+- Validate and sanitize inputs
+
+**5. XSS prevention**
+- Escape user input when rendering in HTML
+- Use Content Security Policy (CSP) headers
+- Validate and sanitize rich text content
+- Use appropriate encoding for different contexts
+
+**6. CSRF protection**
+- Enable CSRF protection in Spring Security
+- Use CSRF tokens for state-changing operations
+- Verify CSRF tokens on server side
 
 ## Testing Standards
 
 ### Testing rules you should follow
 
 **1. Unit testing**
-- Use JUnit 5
-- Use Mockito to mock dependencies
-- Test coverage > 80%
+- Use JUnit 5 (Jupiter)
+- Use Mockito for mocking dependencies
+- Aim for >80% code coverage
+- Test one unit (method/class) in isolation
 
-**2. Integration testing**
-- Use @SpringBootTest
+**2. Test naming**
+Pattern: `should_expectedResult_when_condition`
+- Example: `should_returnUser_when_userExists`
+- Example: `should_throwException_when_userNotFound`
+
+**3. Test structure**
+Follow AAA pattern:
+- Arrange: Set up test data and mocks
+- Act: Execute the method under test
+- Assert: Verify the results
+
+**4. Integration testing**
+- Use @SpringBootTest for full context
 - Test complete business flows
+- Test with actual database (testcontainers)
+- Verify integrations between layers
 
-**3. Test naming**
-- Method name: should_expectedResult_when_condition
-- Example: should_returnUser_when_userExists
+**5. Testing checklist**
+- [ ] All public methods have unit tests
+- [ ] Edge cases are tested (null, empty, boundary values)
+- [ ] Exception scenarios are tested
+- [ ] Mocks are used appropriately (don't test mocks)
+- [ ] Tests are independent (no shared state)
+- [ ] Tests are deterministic (always same result)
+- [ ] Test names clearly describe what is tested
 
-## Common Errors and Corrections
+## Code Quality Checklist
 
-### Errors you should avoid
-
-| Error Type | Wrong Approach | Correct Approach | Reason |
-|---------|---------|---------|------|
-| **Field injection** | @Autowired on fields | Constructor injection | Not convenient for testing |
-| **Cross-layer calls** | Controller directly calls Repository | Controller → Service → Repository | Violates layering principles |
-| **Transaction failure** | Same class method call | Inject self or use AopContext | Proxy failure |
-| **Long transactions** | Call remote services in transaction | Minimize transaction scope | Performance issues |
-| **Swallow exceptions** | catch without handling | Log and throw | Difficult to troubleshoot |
-| **Hardcoded configuration** | Write configuration in code | Use configuration files | Not convenient to maintain |
-| **No expiration time** | Cache permanently valid | Set reasonable expiration time | Memory overflow |
-| **SQL injection** | String concatenation SQL | Use parameterized queries | Security risk |
-
-## Your Checklist
-
-When writing Spring Boot code, you should check:
+When writing Spring Boot code, verify:
 
 ### Architecture Check
-- [ ] Follow layered architecture (Controller → Service → Repository)
-- [ ] Use constructor injection instead of field injection
-- [ ] Startup class in root package
+- [ ] Following layered architecture (Controller → Service → Repository)
+- [ ] Using constructor injection (not field injection)
 - [ ] Configuration classes in config package
+- [ ] Proper package organization
 
 ### Controller Check
-- [ ] Use RESTful style
-- [ ] Unified return format
+- [ ] Using RESTful style
+- [ ] Unified return format (Result<T>)
 - [ ] Parameter validation (@Valid)
-- [ ] No business logic
+- [ ] No business logic in Controller
+- [ ] Proper exception handling
 
 ### Service Check
-- [ ] Separate interface and implementation
-- [ ] Use @Transactional to manage transactions
-- [ ] Minimize transaction scope
-- [ ] Correct exception handling
+- [ ] Interface and implementation separated
+- [ ] Using @Transactional with correct settings
+- [ ] Transaction scope minimized
+- [ ] Exceptions handled properly
+- [ ] Business logic in appropriate layer
 
 ### Configuration Check
-- [ ] Use application.yml
-- [ ] Multi-environment configuration
-- [ ] Encrypt sensitive information
-- [ ] Configuration property binding
+- [ ] Using application.yml (not .properties)
+- [ ] Multi-environment configuration set up
+- [ ] Sensitive information encrypted or externalized
+- [ ] Configuration property binding used
+
+### Logging Check
+- [ ] Using @Slf4j annotation
+- [ ] Appropriate log levels
+- [ ] No sensitive information logged
+- [ ] Placeholders used (not string concatenation)
+- [ ] Exceptions logged with stack traces
 
 ### Security Check
-- [ ] Parameter validation
-- [ ] Authentication and authorization
-- [ ] Password encryption
-- [ ] Don't log sensitive information
+- [ ] Input validation implemented
+- [ ] Authentication and authorization configured
+- [ ] Passwords encrypted (BCrypt)
+- [ ] SQL injection prevented
+- [ ] Sensitive data protected
 
 ### Performance Check
-- [ ] Use caching
-- [ ] Asynchronous processing
-- [ ] Batch operations
-- [ ] Connection pool configuration
+- [ ] Caching strategy implemented
+- [ ] Asynchronous processing where appropriate
+- [ ] Batch operations for bulk data
+- [ ] Connection pools configured
+- [ ] Database queries optimized
 
-## Key Principles Summary
+## Summary
 
-### Architecture Principles
-1. **Convention over configuration**: Use Spring Boot default configurations
-2. **Layered architecture**: Controller → Service → Repository
-3. **Dependency injection**: Use constructor injection
-4. **Separate interface and implementation**: Easy to extend and test
-
-### Development Principles
-1. **Unified return format**: Easy for frontend processing
-2. **Unified exception handling**: Improve code maintainability
-3. **Parameter validation**: Ensure data security
-4. **Transaction management**: Ensure data consistency
-
-### Performance Principles
-1. **Use caching**: Reduce database pressure
-2. **Asynchronous processing**: Improve response speed
-3. **Batch operations**: Reduce network overhead
-4. **Connection pool configuration**: Improve resource utilization
-
-### Security Principles
-1. **Parameter validation**: Prevent malicious input
-2. **Authentication and authorization**: Protect interface security
-3. **Encrypt sensitive information**: Protect user privacy
-4. **Use HTTPS**: Ensure transmission security
-
-## Key Benefits
-
-Following these standards can achieve:
-
-- ✅ Clear code structure, easy to maintain
-- ✅ Unified development standards, easy for team collaboration
-- ✅ High-performance applications, improve user experience
-- ✅ Secure systems, protect user data
-- ✅ Easy-to-test code, ensure quality
-- ✅ Fast development efficiency, reduce costs
+Following these Spring Boot best practices ensures:
+- ✅ Clean and maintainable code structure
+- ✅ Consistent development standards across team
+- ✅ High-performance applications
+- ✅ Secure systems protecting user data
+- ✅ Easy-to-test codebase
+- ✅ Fast development with fewer bugs
