@@ -28,6 +28,12 @@
 
         <dependency>
             <groupId>com.catface996.aiops</groupId>
+            <artifactId>domain-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.catface996.aiops</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>

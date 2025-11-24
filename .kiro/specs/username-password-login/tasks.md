@@ -269,7 +269,7 @@
 
 ## 阶段6：Interface Layer - HTTP 接口（5个任务，11小时）
 
-- [ ] 17. 实现统一响应和异常处理
+- [x] 17. 实现统一响应和异常处理
   - 创建统一响应类（ApiResponse, ErrorResponse）
   - 创建全局异常处理器（@RestControllerAdvice）
   - 映射领域异常到 HTTP 状态码
