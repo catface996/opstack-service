@@ -69,21 +69,27 @@ Domain layer should be independent of any technical framework, maintaining pure 
 
 ### Domain Layer Submodules (Important)
 
-**Key Principle**: Repository-API, Cache-API, MQ-API interface definitions belong to domain layer concepts and should be managed as submodules of Domain
+**Key Principles**:
+1. **domain-model independent management**: Domain models (entities, value objects, domain events) as an independent module, all other modules depend on it
+2. **API modules only depend on models**: Repository-API, Cache-API, MQ-API only depend on domain-model, not domain-api
+3. **Domain layer concepts**: All Port interfaces (Repository, Cache, MQ) belong to domain layer concepts and should be managed as submodules of Domain
 
-| Module | Responsibilities | Description |
-|------|------|------|
-| **domain-api** | Domain models and domain service interfaces | Aggregates, entities, value objects, domain service interfaces |
-| **repository-api** | Repository interface definitions (Ports) | Define data persistence contracts, follow dependency inversion principle |
-| **cache-api** | Cache interface definitions (Ports) | Define cache service contracts |
-| **mq-api** | Message queue interface definitions (Ports) | Define message send/receive contracts |
-| **domain-impl** | Domain service implementations | Implement complex business logic, call Repository/Cache/MQ |
+| Module | Responsibilities | Dependencies | Description |
+|------|------|----------|------|
+| **domain-model** | Pure domain models | common | Entities, value objects, domain events, no business logic |
+| **domain-api** | Domain service interfaces | domain-model | Domain service interface definitions |
+| **repository-api** | Repository interface definitions (Ports) | domain-model | Define data persistence contracts, follow dependency inversion principle |
+| **cache-api** | Cache interface definitions (Ports) | domain-model | Define cache service contracts |
+| **mq-api** | Message queue interface definitions (Ports) | domain-model | Define message send/receive contracts |
+| **domain-impl** | Domain service implementations | domain-api + all *-api | Implement complex business logic, call Repository/Cache/MQ |
 
 **Module Structure Example**:
 ```
 domain/
-├── domain-api/              (domain models and service interfaces)
-│   ├── model/              (aggregates, entities, value objects)
+├── domain-model/            (pure domain models - first submodule)
+│   ├── model/              (aggregates, entities, value objects, domain events)
+│   └── test/               (model unit tests)
+├── domain-api/              (domain service interfaces)
 │   └── service/            (domain service interfaces)
 ├── repository-api/          (repository interfaces - independent submodule)
 │   └── repository/         (Repository interface definitions)
@@ -119,10 +125,11 @@ domain/
 - **Reason**: Application Service is use case orchestration layer, all data access must go through Domain Service
 
 **Domain Layer**:
-- **domain-api**: No dependencies on other modules (pure domain models and interfaces)
-- **repository-api**: No dependencies on other modules (pure interface definitions)
-- **cache-api**: No dependencies on other modules (pure interface definitions)
-- **mq-api**: No dependencies on other modules (pure interface definitions)
+- **domain-model**: Only depends on common (pure domain models, no business logic)
+- **domain-api**: Only depends on domain-model (domain service interfaces)
+- **repository-api**: Only depends on domain-model (pure interface definitions, not domain-api)
+- **cache-api**: Only depends on domain-model (pure interface definitions, not domain-api)
+- **mq-api**: Only depends on domain-model (pure interface definitions, not domain-api)
 - **domain-impl**: Depends on domain-api + repository-api + cache-api + mq-api
 
 **Infrastructure Layer**:
@@ -158,26 +165,35 @@ domain/
 ┌─────────────────────────────────────────────┐
 │         Domain API Layer                    │
 │         (domain-api)                        │
-└─────────────────────────────────────────────┘
-                 ▲
+└────────────────┬────────────────────────────┘
                  │ depends on
-┌────────────────┴────────────────────────────┐
-│         Domain Impl Layer                   │
-│         (domain-impl)                       │
-│  ✅ Depends on repository-api + cache-api + mq-api │
-└────┬────────────────────────┬───────────────┘
-     │ depends on              │ depends on
-     ▼                        ▼
-┌────────────────┐      ┌──────────────────────┐
-│ Repository API │      │ Cache API / MQ API   │
-│ (Port Interface)│      │ (Port Interface)     │
-└────────┬───────┘      └──────────┬───────────┘
-         │ implements              │ implements
-         ▼                         ▼
-┌────────────────┐      ┌──────────────────────┐
-│ mysql-impl     │      │ redis-impl/sqs-impl  │
-│ (Adapter Impl) │      │ (Adapter Impl)       │
-└────────────────┘      └──────────────────────┘
+                 ▼
+┌─────────────────────────────────────────────┐
+│         Domain Model Layer (Core)           │
+│         (domain-model)                      │
+│  Pure domain models: entities, VOs, events  │
+│  Only depends on common, no business logic  │
+└──┬──────────────────────────┬───────────────┘
+   │                          │
+   │ depends on               │ depends on
+   ▼                          ▼
+   ┌────────────────────────────────────────┐
+   │     Repository/Cache/MQ API Layer      │
+   │  ✅ Only depends on domain-model        │
+   │  ❌ Not depends on domain-api           │
+   └────┬───────────────────────────┬───────┘
+        │                           │
+        │ depends on                │ depends on
+        ▲                           ▲
+        │                           │
+┌───────┴─────────┐         ┌───────┴──────────┐
+│ Domain Impl     │         │ Infrastructure   │
+│ (domain-impl)   │         │ Adapters         │
+│                 │         │                  │
+│ Depends on      │         │ mysql-impl       │
+│ domain-api +    │         │ redis-impl       │
+│ all *-api       │         │ sqs-impl         │
+└─────────────────┘         └──────────────────┘
 ```
 
 ## Application Service vs Domain Service Responsibilities (Key)
@@ -612,6 +628,58 @@ When creating or modifying code, you should check:
 2. **PO in mysql-impl**: Contains framework annotations, only used in Repository implementation
 3. **RepositoryImpl responsible for conversion**: Entity ↔ PO conversion completed in Repository implementation
 4. **Configuration cohesion**: MybatisPlusConfig placed in mysql-impl module
+
+### domain-model Module Separation Principles
+
+**Why domain-model module is needed**:
+1. **Clearer dependency hierarchy**: Separate pure domain models from domain-api, API modules only depend on models, not service interfaces
+2. **Avoid unnecessary dependencies**: repository-api, cache-api, mq-api only need domain models, not domain service interfaces
+3. **Follow Single Responsibility Principle**: domain-model only contains model definitions, domain-api only contains service interfaces
+4. **Reduce coupling**: Model changes don't affect API interfaces, API interface changes don't affect models
+
+**domain-model module contents**:
+1. ✅ **Domain entities** (Aggregates, Entities)
+2. ✅ **Value objects** (Value Objects)
+3. ✅ **Domain events** (Domain Events)
+4. ✅ **Enum types** (related to domain models)
+5. ✅ **Model unit tests**
+6. ❌ **Not include**: Service interfaces, business logic, Repository interfaces
+
+**Dependency relationship principles**:
+```
+domain-model (only depends on common)
+    ↑
+    ├── domain-api depends on
+    ├── repository-api depends on
+    ├── cache-api depends on
+    └── mq-api depends on
+```
+
+**Implementation steps**:
+1. **Create domain-model module**: Create domain-model submodule under domain directory
+2. **Configure dependencies**: domain-model only depends on common and jackson-annotations
+3. **Move model classes**: Move all domain models from domain-api/model/ to domain-model/model/
+4. **Update package paths**: Change from `com.{company}.{system}.domain.api.model` to `com.{company}.{system}.domain.model`
+5. **Update dependency relationships**:
+   - domain-api depends on domain-model
+   - repository-api depends on domain-model (not domain-api)
+   - cache-api depends on domain-model (not domain-api)
+   - mq-api depends on domain-model (not domain-api)
+6. **Update import statements**: Search and replace old package paths throughout the project
+7. **Move test files**: Move model tests from domain-api to domain-model
+
+**Verification checklist**:
+- [ ] domain-model is the first submodule of domain (in pom.xml)
+- [ ] domain-model only depends on common and jackson-annotations
+- [ ] repository-api, cache-api, mq-api only depend on domain-model, not domain-api
+- [ ] All model classes use package path `com.{company}.{system}.domain.model.*`
+- [ ] Compilation succeeds, all tests pass
+
+**Key benefits**:
+- ✅ Clearer dependency hierarchy, more single module responsibility
+- ✅ API modules don't need transitive dependency on domain-api
+- ✅ Models and service interfaces decoupled, easy to evolve independently
+- ✅ Follow DDD layered architecture best practices
 
 ### Dependency Management Principles
 

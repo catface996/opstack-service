@@ -69,21 +69,27 @@ Domain 层使用纯粹的业务语言（Ubiquitous Language），不使用技术
 
 ### Domain 层子模块说明（重要）
 
-**关键原则**: Repository-API、Cache-API、MQ-API 接口定义属于领域层概念，应作为 Domain 的子模块管理
+**关键原则**:
+1. **domain-model 独立管理**: 领域模型（实体、值对象、领域事件）作为独立模块，所有其他模块依赖它
+2. **API 模块只依赖模型**: Repository-API、Cache-API、MQ-API 只依赖 domain-model，不依赖 domain-api
+3. **领域层概念**: 所有 Port 接口（Repository、Cache、MQ）属于领域层概念，应作为 Domain 的子模块管理
 
-| 模块 | 职责 | 说明 |
-|------|------|------|
-| **domain-api** | 领域模型和领域服务接口 | 聚合根、实体、值对象、领域服务接口 |
-| **repository-api** | 仓储接口定义（Port） | 定义数据持久化契约，遵循依赖倒置原则 |
-| **cache-api** | 缓存接口定义（Port） | 定义缓存服务契约 |
-| **mq-api** | 消息队列接口定义（Port） | 定义消息发送/接收契约 |
-| **domain-impl** | 领域服务实现 | 实现复杂业务逻辑，调用 Repository/Cache/MQ |
+| 模块 | 职责 | 依赖关系 | 说明 |
+|------|------|---------|------|
+| **domain-model** | 纯领域模型 | common | 实体、值对象、领域事件，无业务逻辑 |
+| **domain-api** | 领域服务接口 | domain-model | 领域服务接口定义 |
+| **repository-api** | 仓储接口定义（Port） | domain-model | 定义数据持久化契约，遵循依赖倒置原则 |
+| **cache-api** | 缓存接口定义（Port） | domain-model | 定义缓存服务契约 |
+| **mq-api** | 消息队列接口定义（Port） | domain-model | 定义消息发送/接收契约 |
+| **domain-impl** | 领域服务实现 | domain-api + 所有 *-api | 实现复杂业务逻辑，调用 Repository/Cache/MQ |
 
 **模块结构示例**:
 ```
 domain/
-├── domain-api/              (领域模型和领域服务接口)
-│   ├── model/              (聚合根、实体、值对象)
+├── domain-model/            (纯领域模型 - 第一个子模块)
+│   ├── model/              (聚合根、实体、值对象、领域事件)
+│   └── test/               (模型单元测试)
+├── domain-api/              (领域服务接口)
 │   └── service/            (领域服务接口)
 ├── repository-api/          (仓储接口 - 独立子模块)
 │   └── repository/         (Repository 接口定义)
@@ -119,10 +125,11 @@ domain/
 - **原因**: Application Service 是用例编排层，所有数据访问必须通过 Domain Service
 
 **Domain 层**：
-- **domain-api**: 不依赖任何其他模块（纯领域模型和接口）
-- **repository-api**: 不依赖任何其他模块（纯接口定义）
-- **cache-api**: 不依赖任何其他模块（纯接口定义）
-- **mq-api**: 不依赖任何其他模块（纯接口定义）
+- **domain-model**: 只依赖 common（纯领域模型，无业务逻辑）
+- **domain-api**: 只依赖 domain-model（领域服务接口）
+- **repository-api**: 只依赖 domain-model（纯接口定义，不依赖 domain-api）
+- **cache-api**: 只依赖 domain-model（纯接口定义，不依赖 domain-api）
+- **mq-api**: 只依赖 domain-model（纯接口定义，不依赖 domain-api）
 - **domain-impl**: 依赖 domain-api + repository-api + cache-api + mq-api
 
 **Infrastructure 层**：
@@ -158,26 +165,35 @@ domain/
 ┌─────────────────────────────────────────────┐
 │         Domain API Layer                    │
 │         (domain-api)                        │
-└─────────────────────────────────────────────┘
-                 ▲
+└────────────────┬────────────────────────────┘
                  │ 依赖
-┌────────────────┴────────────────────────────┐
-│         Domain Impl Layer                   │
-│         (domain-impl)                       │
-│  ✅ 依赖 repository-api + cache-api + mq-api │
-└────┬────────────────────────┬───────────────┘
-     │ 依赖                    │ 依赖
-     ▼                        ▼
-┌────────────────┐      ┌──────────────────────┐
-│ Repository API │      │ Cache API / MQ API   │
-│ (Port 接口)     │      │ (Port 接口)           │
-└────────┬───────┘      └──────────┬───────────┘
-         │ 实现                     │ 实现
-         ▼                         ▼
-┌────────────────┐      ┌──────────────────────┐
-│ mysql-impl     │      │ redis-impl/sqs-impl  │
-│ (Adapter 实现)  │      │ (Adapter 实现)        │
-└────────────────┘      └──────────────────────┘
+                 ▼
+┌─────────────────────────────────────────────┐
+│         Domain Model Layer (核心)           │
+│         (domain-model)                      │
+│  纯领域模型：实体、值对象、领域事件          │
+│  只依赖 common，无业务逻辑                   │
+└──┬──────────────────────────┬───────────────┘
+   │                          │
+   │ 依赖                      │ 依赖
+   ▼                          ▼
+   ┌────────────────────────────────────────┐
+   │     Repository/Cache/MQ API Layer      │
+   │  ✅ 只依赖 domain-model                 │
+   │  ❌ 不依赖 domain-api                   │
+   └────┬───────────────────────────┬───────┘
+        │                           │
+        │ 依赖                       │ 依赖
+        ▲                           ▲
+        │                           │
+┌───────┴─────────┐         ┌───────┴──────────┐
+│ Domain Impl     │         │ Infrastructure   │
+│ (domain-impl)   │         │ Adapters         │
+│                 │         │                  │
+│ 依赖 domain-api │         │ mysql-impl       │
+│   + 所有 *-api   │         │ redis-impl       │
+│                 │         │ sqs-impl         │
+└─────────────────┘         └──────────────────┘
 ```
 
 ## Application Service 与 Domain Service 职责边界（关键）
@@ -612,6 +628,58 @@ public Account findAccountById(Long accountId) {
 2. **PO 在 mysql-impl**：包含框架注解，仅在 Repository 实现中使用
 3. **RepositoryImpl 负责转换**：Entity ↔ PO 转换在 Repository 实现中完成
 4. **配置内聚**：MybatisPlusConfig 放在 mysql-impl 模块
+
+### domain-model 模块分离原则
+
+**为什么需要 domain-model 模块**：
+1. **更清晰的依赖层次**：将纯领域模型从 domain-api 中分离出来，API 模块只依赖模型，不依赖服务接口
+2. **避免不必要的依赖**：repository-api、cache-api、mq-api 只需要领域模型，不需要领域服务接口
+3. **符合单一职责原则**：domain-model 只包含模型定义，domain-api 只包含服务接口
+4. **降低耦合度**：模型变更不会影响 API 接口，API 接口变更不会影响模型
+
+**domain-model 模块内容**：
+1. ✅ **领域实体**（Aggregates, Entities）
+2. ✅ **值对象**（Value Objects）
+3. ✅ **领域事件**（Domain Events）
+4. ✅ **枚举类型**（与领域模型相关的枚举）
+5. ✅ **模型单元测试**
+6. ❌ **不包含**：服务接口、业务逻辑、Repository 接口
+
+**依赖关系原则**：
+```
+domain-model (只依赖 common)
+    ↑
+    ├── domain-api 依赖
+    ├── repository-api 依赖
+    ├── cache-api 依赖
+    └── mq-api 依赖
+```
+
+**实施步骤**：
+1. **创建 domain-model 模块**：在 domain 目录下创建 domain-model 子模块
+2. **配置依赖**：domain-model 只依赖 common 和 jackson-annotations
+3. **移动模型类**：将所有领域模型从 domain-api/model/ 移动到 domain-model/model/
+4. **更新包路径**：从 `com.{company}.{system}.domain.api.model` 改为 `com.{company}.{system}.domain.model`
+5. **更新依赖关系**：
+   - domain-api 依赖 domain-model
+   - repository-api 依赖 domain-model（而不是 domain-api）
+   - cache-api 依赖 domain-model（而不是 domain-api）
+   - mq-api 依赖 domain-model（而不是 domain-api）
+6. **更新 import 语句**：全项目搜索并替换旧包路径
+7. **移动测试文件**：将模型测试从 domain-api 移到 domain-model
+
+**验证方法**：
+- [ ] domain-model 是 domain 的第一个子模块（在 pom.xml 中）
+- [ ] domain-model 只依赖 common 和 jackson-annotations
+- [ ] repository-api、cache-api、mq-api 只依赖 domain-model，不依赖 domain-api
+- [ ] 所有模型类的包路径为 `com.{company}.{system}.domain.model.*`
+- [ ] 编译成功，所有测试通过
+
+**关键收益**：
+- ✅ 依赖层次更清晰，模块职责更单一
+- ✅ API 模块不需要传递依赖 domain-api
+- ✅ 模型和服务接口解耦，便于独立演进
+- ✅ 符合 DDD 分层架构最佳实践
 
 ### 依赖管理原则
 
