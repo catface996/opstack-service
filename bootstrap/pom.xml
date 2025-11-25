@@ -61,12 +61,24 @@
             <artifactId>sqs-impl</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.catface996.aiops</groupId>
+            <artifactId>jwt-impl</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Common Module -->
         <dependency>
             <groupId>com.catface996.aiops</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Spring Boot Starters -->

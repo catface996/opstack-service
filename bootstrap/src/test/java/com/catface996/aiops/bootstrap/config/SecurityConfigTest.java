@@ -47,9 +47,9 @@ class SecurityConfigTest {
     @Test
     void testProtectedEndpointRequiresAuthentication() throws Exception {
         // 验证受保护的接口需要认证
-        // Spring Security 默认返回 403 Forbidden（而不是 401）当没有认证信息时
+        // 配置了 JwtAuthenticationEntryPoint 后，未认证时返回 401 Unauthorized
         mockMvc.perform(get("/api/test"))
-            .andExpect(status().isForbidden()); // 403 Forbidden
+            .andExpect(status().isUnauthorized()); // 401 Unauthorized
     }
 
     @Test
