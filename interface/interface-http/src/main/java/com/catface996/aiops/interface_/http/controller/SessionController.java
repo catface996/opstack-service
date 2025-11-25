@@ -1,0 +1,245 @@
+package com.catface996.aiops.interface_.http.controller;
+
+import com.catface996.aiops.application.api.dto.auth.LoginResult;
+import com.catface996.aiops.application.api.dto.auth.SessionValidationResult;
+import com.catface996.aiops.application.api.dto.auth.request.ForceLogoutRequest;
+import com.catface996.aiops.application.api.service.auth.AuthApplicationService;
+import com.catface996.aiops.interface_.http.response.ApiResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 会话管理控制器
+ *
+ * <p>提供会话管理相关的 HTTP 接口，包括会话验证和强制登出功能。</p>
+ *
+ * <p>接口列表：</p>
+ * <ul>
+ *   <li>GET /api/v1/session/validate - 验证会话</li>
+ *   <li>POST /api/v1/session/force-logout-others - 强制登出其他设备</li>
+ * </ul>
+ *
+ * <p>统一响应格式：</p>
+ * <pre>
+ * {
+ *   "code": 0,
+ *   "message": "操作成功",
+ *   "data": { ... }
+ * }
+ * </pre>
+ *
+ * <p>HTTP 状态码规范：</p>
+ * <ul>
+ *   <li>200 OK - 操作成功</li>
+ *   <li>400 Bad Request - 请求参数错误</li>
+ *   <li>401 Unauthorized - 未认证或Token无效</li>
+ *   <li>403 Forbidden - 权限不足</li>
+ *   <li>404 Not Found - 资源不存在</li>
+ *   <li>500 Internal Server Error - 服务器内部错误</li>
+ * </ul>
+ *
+ * <p>需求追溯：</p>
+ * <ul>
+ *   <li>REQ-FR-007: 会话管理</li>
+ *   <li>REQ-FR-009: 会话互斥</li>
+ * </ul>
+ *
+ * @author AI Assistant
+ * @since 2025-11-25
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/session")
+@RequiredArgsConstructor
+public class SessionController {
+
+    private final AuthApplicationService authApplicationService;
+
+    /**
+     * 验证会话
+     *
+     * <p>验证用户会话是否有效，包括以下流程：</p>
+     * <ol>
+     *   <li>解析 JWT Token 获取会话ID</li>
+     *   <li>从 Redis 查询会话信息（优先）</li>
+     *   <li>如果 Redis 未命中，从 MySQL 查询（降级）</li>
+     *   <li>检查会话是否过期</li>
+     *   <li>返回会话验证结果</li>
+     * </ol>
+     *
+     * <p>请求示例：</p>
+     * <pre>
+     * GET /api/v1/session/validate
+     * Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     * </pre>
+     *
+     * <p>成功响应示例（200 OK）：</p>
+     * <pre>
+     * {
+     *   "code": 0,
+     *   "message": "操作成功",
+     *   "data": {
+     *     "valid": true,
+     *     "userInfo": {
+     *       "accountId": 12345,
+     *       "username": "john_doe",
+     *       "email": "john@example.com",
+     *       "role": "ROLE_USER",
+     *       "status": "ACTIVE"
+     *     },
+     *     "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+     *     "expiresAt": "2025-11-25T14:30:00",
+     *     "remainingSeconds": 7200,
+     *     "message": "会话有效"
+     *   }
+     * }
+     * </pre>
+     *
+     * <p>会话无效响应示例（200 OK）：</p>
+     * <pre>
+     * {
+     *   "code": 0,
+     *   "message": "操作成功",
+     *   "data": {
+     *     "valid": false,
+     *     "userInfo": null,
+     *     "sessionId": null,
+     *     "expiresAt": null,
+     *     "remainingSeconds": 0,
+     *     "message": "会话已过期，请重新登录"
+     *   }
+     * }
+     * </pre>
+     *
+     * <p>错误响应示例（401 Unauthorized）：</p>
+     * <pre>
+     * {
+     *   "code": 401001,
+     *   "message": "Token 格式错误",
+     *   "data": null
+     * }
+     * </pre>
+     *
+     * @param authorization JWT Token（包含 Bearer 前缀）
+     * @return 会话验证结果
+     * @throws IllegalArgumentException 当 Token 无效时抛出
+     * @throws com.catface996.aiops.common.exception.InvalidTokenException 当 Token 格式错误时抛出
+     * @throws com.catface996.aiops.common.exception.SessionExpiredException 当会话已过期时抛出
+     */
+    @GetMapping("/validate")
+    public ResponseEntity<ApiResponse<SessionValidationResult>> validateSession(
+            @RequestHeader("Authorization") String authorization) {
+        log.info("接收到会话验证请求");
+        SessionValidationResult result = authApplicationService.validateSession(authorization);
+        log.info("会话验证完成: valid={}, sessionId={}", result.isValid(), result.getSessionId());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * 强制登出其他设备
+     *
+     * <p>使当前用户在其他设备的会话失效，然后在当前设备重新登录，包括以下流程：</p>
+     * <ol>
+     *   <li>解析请求中的 JWT Token 获取用户ID</li>
+     *   <li>验证密码是否正确（安全验证）</li>
+     *   <li>查询该用户的所有活跃会话</li>
+     *   <li>删除所有旧会话（包括当前会话）</li>
+     *   <li>创建新会话并生成新的 JWT Token</li>
+     *   <li>记录审计日志</li>
+     * </ol>
+     *
+     * <p>使用场景：</p>
+     * <ul>
+     *   <li>用户发现账号在其他设备上登录，怀疑账号被盗用</li>
+     *   <li>用户希望清除所有旧会话，重新开始</li>
+     *   <li>用户在新设备上登录，但旧设备会话未过期</li>
+     * </ul>
+     *
+     * <p>请求示例：</p>
+     * <pre>
+     * POST /api/v1/session/force-logout-others
+     * Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     * Content-Type: application/json
+     *
+     * {
+     *   "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     *   "password": "SecureP@ss123"
+     * }
+     * </pre>
+     *
+     * <p>成功响应示例（200 OK）：</p>
+     * <pre>
+     * {
+     *   "code": 0,
+     *   "message": "操作成功",
+     *   "data": {
+     *     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     *     "userInfo": {
+     *       "accountId": 12345,
+     *       "username": "john_doe",
+     *       "email": "john@example.com",
+     *       "role": "ROLE_USER",
+     *       "status": "ACTIVE"
+     *     },
+     *     "sessionId": "660f9511-f3ac-52e5-b827-557766551111",
+     *     "expiresAt": "2025-11-25T14:30:00",
+     *     "deviceInfo": "Chrome 120.0 on Windows 11",
+     *     "message": "已强制登出其他设备，请使用新 Token 进行访问"
+     *   }
+     * }
+     * </pre>
+     *
+     * <p>错误响应示例（400 Bad Request - 密码错误）：</p>
+     * <pre>
+     * {
+     *   "code": 400002,
+     *   "message": "密码错误",
+     *   "data": null
+     * }
+     * </pre>
+     *
+     * <p>错误响应示例（401 Unauthorized - Token无效）：</p>
+     * <pre>
+     * {
+     *   "code": 401001,
+     *   "message": "Token 无效",
+     *   "data": null
+     * }
+     * </pre>
+     *
+     * <p>安全机制：</p>
+     * <ul>
+     *   <li>需要验证密码，防止他人滥用此功能</li>
+     *   <li>需要提供当前有效的 JWT Token，证明当前会话有效</li>
+     *   <li>操作会记录到审计日志，便于追踪</li>
+     *   <li>连续5次密码错误会锁定账号30分钟</li>
+     * </ul>
+     *
+     * @param authorization JWT Token（包含 Bearer 前缀），通过请求头传递
+     * @param request 强制登出请求，包含 Token 和密码
+     * @return 登录结果，包含新的 JWT Token、用户信息和会话信息
+     * @throws IllegalArgumentException 当请求参数无效时抛出
+     * @throws com.catface996.aiops.common.exception.AuthenticationException 当密码验证失败时抛出
+     * @throws com.catface996.aiops.common.exception.InvalidTokenException 当 Token 格式错误时抛出
+     * @throws com.catface996.aiops.common.exception.AccountLockedException 当账号被锁定时抛出
+     */
+    @PostMapping("/force-logout-others")
+    public ResponseEntity<ApiResponse<LoginResult>> forceLogoutOthers(
+            @RequestHeader("Authorization") String authorization,
+            @Valid @RequestBody ForceLogoutRequest request) {
+        log.info("接收到强制登出其他设备请求");
+
+        // 使用请求头中的 Token，确保使用当前会话的 Token
+        ForceLogoutRequest actualRequest = ForceLogoutRequest.of(authorization, request.getPassword());
+        LoginResult result = authApplicationService.forceLogoutOthers(actualRequest);
+
+        log.info("强制登出其他设备成功: accountId={}, username={}, newSessionId={}",
+                result.getUserInfo().getAccountId(),
+                result.getUserInfo().getUsername(),
+                result.getSessionId());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+}
