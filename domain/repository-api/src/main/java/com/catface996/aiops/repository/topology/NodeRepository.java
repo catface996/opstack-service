@@ -1,11 +1,11 @@
-package com.catface996.aiops.repository;
+package com.catface996.aiops.repository.topology;
 
 import com.catface996.aiops.domain.api.model.topology.Node;
 
 /**
  * 节点仓储接口
  *
- * <p>定义节点实体的数据访问契约，包括基本 CRUD 操作。</p>
+ * <p>定义节点实体的数据访问契约,包括基本 CRUD 操作。</p>
  *
  * <p>User Story 1 (US1) - 持久化和检索系统节点信息:</p>
  * <ul>
