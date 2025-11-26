@@ -99,18 +99,16 @@ HTTP/1.1 200
 ```
 Swagger UI 页面可以正常访问（返回 HTTP 200）。
 
-## 已知问题
+## 版本兼容性问题（已解决）
 
-### 版本兼容性问题
-SpringDoc 2.3.0 与 Spring Boot 3.4.1 存在兼容性问题：
-- 错误: `NoSuchMethodError: 'void org.springframework.web.method.ControllerAdviceBean.<init>(java.lang.Object)'`
-- 原因: Spring Framework 6.2 更改了 `ControllerAdviceBean` 构造器签名
-- 影响: `/v3/api-docs` 端点返回 500 错误
-- 解决方案: 升级 SpringDoc 到 2.5.0+ 版本（需要网络访问 Maven 仓库）
+### 问题描述
+SpringDoc 2.3.0 与 Spring Boot 3.4.1 存在兼容性问题。
 
-### 临时解决方案
-1. 等待网络恢复后升级 SpringDoc 版本
-2. 或降级 Spring Boot 版本到 3.3.x
+### 解决方案
+已将 SpringDoc 升级到 2.7.0 版本：
+- bootstrap/pom.xml: 2.7.0
+- interface-http/pom.xml: 2.7.0
+- application-api/pom.xml: 2.7.0
 
 ## 文件变更清单
 
@@ -133,9 +131,11 @@ SpringDoc 2.3.0 与 Spring Boot 3.4.1 存在兼容性问题：
 
 ## 结论
 
-任务28的代码实现已完成，所有 Controller 和 DTO 都添加了完整的 OpenAPI 注解。由于 SpringDoc 版本与 Spring Boot 3.4.1 的兼容性问题，API 文档端点暂时无法正常工作，但 Swagger UI 页面本身可以访问。
+任务28已完成。所有 Controller 和 DTO 都添加了完整的 OpenAPI 注解。SpringDoc 已升级到 2.7.0 版本，兼容性问题已解决。
 
-**待办事项:**
-- [ ] 网络恢复后升级 SpringDoc 到 2.5.0+ 版本
-- [ ] 验证 `/v3/api-docs` 端点正常返回 JSON
-- [ ] 验证 Swagger UI 能正常展示所有 API 文档
+**最终状态:**
+- ✅ SpringDoc 升级到 2.7.0 版本
+- ✅ `/v3/api-docs` 端点正常返回 JSON
+- ✅ Swagger UI 正常展示所有 API 文档
+
+**更新日期**: 2025-11-26
