@@ -38,10 +38,11 @@ class SessionIntegrationTest extends BaseIntegrationTest {
 
     /**
      * 辅助方法：注册用户并返回用户名
+     * 使用纳秒时间戳 + 随机数确保用户名唯一
      */
     private String registerUser(String usernamePrefix) throws Exception {
-        String username = usernamePrefix.substring(0, Math.min(2, usernamePrefix.length()))
-                + (System.currentTimeMillis() % 100000000);
+        String username = usernamePrefix.substring(0, Math.min(3, usernamePrefix.length()))
+                + System.nanoTime() % 10000000;
         RegisterRequest request = new RegisterRequest(
                 username,
                 username + "@example.com",

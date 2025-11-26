@@ -46,10 +46,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         @Order(1)
         @DisplayName("应该成功注册新用户")
         void should_RegisterSuccessfully_when_ValidRequest() throws Exception {
-            // Arrange
+            // Arrange - 使用唯一用户名
+            String uniqueUsername = "reg" + System.nanoTime() % 10000000;
             RegisterRequest request = new RegisterRequest(
-                    "testuser001",
-                    "testuser001@example.com",
+                    uniqueUsername,
+                    uniqueUsername + "@example.com",
                     "SecureP@ss123"
             );
 
@@ -60,8 +61,8 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                     .andExpect(status().isCreated())  // 201 Created
                     .andExpect(jsonPath("$.code").value(0))
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.username").value("testuser001"))
-                    .andExpect(jsonPath("$.data.email").value("testuser001@example.com"))
+                    .andExpect(jsonPath("$.data.username").value(uniqueUsername))
+                    .andExpect(jsonPath("$.data.email").value(uniqueUsername + "@example.com"))
                     .andExpect(jsonPath("$.data.accountId").isNumber())
                     .andExpect(jsonPath("$.data.role").value("ROLE_USER"));
         }
@@ -70,10 +71,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         @Order(2)
         @DisplayName("应该拒绝重复用户名注册")
         void should_RejectRegistration_when_DuplicateUsername() throws Exception {
-            // Arrange - 先注册一个用户
+            // Arrange - 使用唯一用户名先注册一个用户
+            String uniqueUsername = "dup" + System.nanoTime() % 10000000;
             RegisterRequest firstRequest = new RegisterRequest(
-                    "duplicateuser",
-                    "first@example.com",
+                    uniqueUsername,
+                    uniqueUsername + "first@example.com",
                     "SecureP@ss123"
             );
             mockMvc.perform(post(REGISTER_URL)
@@ -82,8 +84,8 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 
             // Arrange - 使用相同用户名再次注册
             RegisterRequest duplicateRequest = new RegisterRequest(
-                    "duplicateuser",
-                    "second@example.com",
+                    uniqueUsername,
+                    uniqueUsername + "second@example.com",
                     "SecureP@ss123"
             );
 
@@ -100,10 +102,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         @Order(3)
         @DisplayName("应该拒绝重复邮箱注册")
         void should_RejectRegistration_when_DuplicateEmail() throws Exception {
-            // Arrange - 先注册一个用户
+            // Arrange - 使用唯一用户名和邮箱先注册一个用户
+            String uniqueEmail = "em" + System.nanoTime() % 10000000 + "@example.com";
             RegisterRequest firstRequest = new RegisterRequest(
-                    "emailuser1",
-                    "duplicate@example.com",
+                    "eu1" + System.nanoTime() % 10000000,
+                    uniqueEmail,
                     "SecureP@ss123"
             );
             mockMvc.perform(post(REGISTER_URL)
@@ -112,8 +115,8 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 
             // Arrange - 使用相同邮箱再次注册
             RegisterRequest duplicateRequest = new RegisterRequest(
-                    "emailuser2",
-                    "duplicate@example.com",
+                    "eu2" + System.nanoTime() % 10000000,
+                    uniqueEmail,
                     "SecureP@ss123"
             );
 
@@ -130,10 +133,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         @Order(4)
         @DisplayName("应该拒绝弱密码注册")
         void should_RejectRegistration_when_WeakPassword() throws Exception {
-            // Arrange
+            // Arrange - 使用唯一用户名
+            String uniqueUsername = "wk" + System.nanoTime() % 10000000;
             RegisterRequest request = new RegisterRequest(
-                    "weakpwduser",
-                    "weakpwd@example.com",
+                    uniqueUsername,
+                    uniqueUsername + "@example.com",
                     "123456"  // 弱密码
             );
 
