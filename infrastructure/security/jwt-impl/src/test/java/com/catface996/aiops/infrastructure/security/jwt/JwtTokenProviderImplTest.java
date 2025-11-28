@@ -1,5 +1,7 @@
 package com.catface996.aiops.infrastructure.security.jwt;
 
+import com.catface996.aiops.domain.model.auth.TokenClaims;
+import com.catface996.aiops.domain.model.auth.TokenType;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -32,6 +34,7 @@ class JwtTokenProviderImplTest {
     private static final Long TEST_USER_ID = 12345L;
     private static final String TEST_USERNAME = "john_doe";
     private static final String TEST_ROLE = "ROLE_USER";
+    private static final String TEST_SESSION_ID = "session-123-456-789";
 
     @BeforeEach
     void setUp() {
@@ -83,6 +86,53 @@ class JwtTokenProviderImplTest {
     }
 
     @Test
+    @DisplayName("生成 Token - 包含 sessionId")
+    void testGenerateToken_WithSessionId() {
+        // When
+        String token = jwtTokenProvider.generateToken(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+
+        // Then
+        assertThat(token).isNotNull();
+
+        // 验证 sessionId
+        String sessionId = jwtTokenProvider.getSessionIdFromToken(token);
+        assertThat(sessionId).isEqualTo(TEST_SESSION_ID);
+    }
+
+    @Test
+    @DisplayName("生成 Token - 带有唯一标识 (jti)")
+    void testGenerateTokenWithJti() {
+        // When
+        String token = jwtTokenProvider.generateTokenWithJti(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+
+        // Then
+        assertThat(token).isNotNull();
+
+        // 验证 jti 存在
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+        assertThat(tokenId).isNotNull();
+        assertThat(tokenId).isNotEmpty();
+
+        // 验证 sessionId
+        String sessionId = jwtTokenProvider.getSessionIdFromToken(token);
+        assertThat(sessionId).isEqualTo(TEST_SESSION_ID);
+    }
+
+    @Test
+    @DisplayName("生成两个 Token - jti 应该不同")
+    void testGenerateTokenWithJti_UniqueJti() {
+        // When
+        String token1 = jwtTokenProvider.generateTokenWithJti(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+        String token2 = jwtTokenProvider.generateTokenWithJti(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+
+        // Then
+        String jti1 = jwtTokenProvider.getTokenIdFromToken(token1);
+        String jti2 = jwtTokenProvider.getTokenIdFromToken(token2);
+
+        assertThat(jti1).isNotEqualTo(jti2);
+    }
+
+    @Test
     @DisplayName("验证有效的 Token")
     void testValidateAndParseToken_ValidToken() {
         // Given
@@ -99,6 +149,28 @@ class JwtTokenProviderImplTest {
         assertThat(claims.get("iat")).isNotNull();
         assertThat(claims.get("exp")).isNotNull();
         assertThat((Date) claims.get("exp")).isAfter(new Date());
+    }
+
+    @Test
+    @DisplayName("解析 Token 为 TokenClaims 值对象")
+    void testParseTokenClaims() {
+        // Given
+        String token = jwtTokenProvider.generateTokenWithJti(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+
+        // When
+        TokenClaims claims = jwtTokenProvider.parseTokenClaims(token);
+
+        // Then
+        assertThat(claims).isNotNull();
+        assertThat(claims.getUserId()).isEqualTo(TEST_USER_ID);
+        assertThat(claims.getUsername()).isEqualTo(TEST_USERNAME);
+        assertThat(claims.getRole()).isEqualTo(TEST_ROLE);
+        assertThat(claims.getSessionId()).isEqualTo(TEST_SESSION_ID);
+        assertThat(claims.getTokenId()).isNotNull();
+        assertThat(claims.getIssuedAt()).isNotNull();
+        assertThat(claims.getExpiresAt()).isNotNull();
+        assertThat(claims.getTokenType()).isEqualTo(TokenType.ACCESS);
+        assertThat(claims.isExpired()).isFalse();
     }
 
     @Test
@@ -260,6 +332,45 @@ class JwtTokenProviderImplTest {
     }
 
     @Test
+    @DisplayName("获取 Token 的剩余有效时间")
+    void testGetRemainingTtl() {
+        // Given
+        String token = jwtTokenProvider.generateToken(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, false);
+
+        // When
+        long remainingTtl = jwtTokenProvider.getRemainingTtl(token);
+
+        // Then
+        // 约为 2 小时 = 7200 秒
+        long twoHoursInSeconds = 2 * 60 * 60;
+        assertThat(remainingTtl).isCloseTo(twoHoursInSeconds, org.assertj.core.data.Offset.offset(5L));
+    }
+
+    @Test
+    @DisplayName("获取过期 Token 的剩余有效时间 - 返回 0")
+    void testGetRemainingTtl_ExpiredToken() {
+        // Given - 创建一个已过期的 Token
+        SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8));
+        Date now = new Date();
+        Date expiredDate = new Date(now.getTime() - 1000L);
+
+        String expiredToken = Jwts.builder()
+                .subject(TEST_USER_ID.toString())
+                .claim("username", TEST_USERNAME)
+                .claim("role", TEST_ROLE)
+                .issuedAt(new Date(now.getTime() - 2000L))
+                .expiration(expiredDate)
+                .signWith(key)
+                .compact();
+
+        // When
+        long remainingTtl = jwtTokenProvider.getRemainingTtl(expiredToken);
+
+        // Then
+        assertThat(remainingTtl).isEqualTo(0);
+    }
+
+    @Test
     @DisplayName("生成的 Token 包含所有必要的用户信息")
     void testGeneratedTokenContainsAllUserInfo() {
         // Given
@@ -277,5 +388,31 @@ class JwtTokenProviderImplTest {
         assertThat(claims.get("role")).isEqualTo(role);
         assertThat(claims.get("iat")).isNotNull();
         assertThat(claims.get("exp")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("从没有 sessionId 的 Token 中提取 sessionId - 返回 null")
+    void testGetSessionIdFromToken_NoSessionId() {
+        // Given
+        String token = jwtTokenProvider.generateToken(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, false);
+
+        // When
+        String sessionId = jwtTokenProvider.getSessionIdFromToken(token);
+
+        // Then
+        assertThat(sessionId).isNull();
+    }
+
+    @Test
+    @DisplayName("从没有 jti 的 Token 中提取 tokenId - 返回 null")
+    void testGetTokenIdFromToken_NoJti() {
+        // Given - 使用不带 jti 的方法生成 Token
+        String token = jwtTokenProvider.generateToken(TEST_USER_ID, TEST_USERNAME, TEST_ROLE, TEST_SESSION_ID, false);
+
+        // When
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+
+        // Then
+        assertThat(tokenId).isNull();
     }
 }

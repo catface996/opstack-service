@@ -1,5 +1,7 @@
 package com.catface996.aiops.infrastructure.security.jwt;
 
+import com.catface996.aiops.domain.model.auth.TokenClaims;
+import com.catface996.aiops.domain.model.auth.TokenType;
 import com.catface996.aiops.infrastructure.security.api.service.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -14,16 +16,24 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * JWT Token 提供者实现
- * <p>
- * 负责 JWT Token 的生成、验证和解析功能
- * 支持不同的过期时间（2小时 vs 30天）
- * 处理 Token 过期、无效等异常情况
+ *
+ * <p>负责 JWT Token 的生成、验证和解析功能。</p>
+ * <p>支持不同的过期时间（2小时 vs 30天）。</p>
+ * <p>处理 Token 过期、无效等异常情况。</p>
+ *
+ * <p>需求追溯：</p>
+ * <ul>
+ *   <li>F01-4: 会话管理功能</li>
+ *   <li>REQ 2.1, 2.2, 2.3, 2.4: JWT令牌管理</li>
+ * </ul>
  *
  * @author AI Assistant
  * @since 2025-01-23
@@ -33,7 +43,7 @@ import java.util.Map;
 public class JwtTokenProviderImpl implements JwtTokenProvider {
 
     /**
-     * JWT 签名密钥（从配置文件读取）
+     * JWT 签名密钥
      */
     private final SecretKey secretKey;
 
@@ -48,12 +58,11 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
     private static final long REMEMBER_ME_EXPIRATION_TIME = 30 * 24 * 60 * 60 * 1000L;
 
     /**
-     * 构造函数，从配置文件读取签名密钥
+     * 构造函数
      *
-     * @param jwtSecret JWT 签名密钥（Base64编码或原始字符串）
+     * @param jwtSecret JWT 签名密钥
      */
     public JwtTokenProviderImpl(@Value("${security.jwt.secret}") String jwtSecret) {
-        // 使用 HMAC-SHA256 算法生成密钥
         this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         log.info("JwtTokenProvider initialized with secret key");
     }
@@ -76,7 +85,6 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
                 .issuedAt(now)
                 .expiration(expirationDate);
 
-        // 如果提供了 sessionId，则添加到 Token 中
         if (sessionId != null && !sessionId.isEmpty()) {
             tokenBuilder.claim("sessionId", sessionId);
         }
@@ -85,6 +93,35 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
 
         log.debug("Generated JWT token for user: {}, sessionId: {}, rememberMe: {}, expiresAt: {}",
                 username, sessionId, rememberMe, expirationDate);
+
+        return token;
+    }
+
+    @Override
+    public String generateTokenWithJti(Long userId, String username, String role, String sessionId, boolean rememberMe) {
+        Date now = new Date();
+        long expirationTime = rememberMe ? REMEMBER_ME_EXPIRATION_TIME : DEFAULT_EXPIRATION_TIME;
+        Date expirationDate = new Date(now.getTime() + expirationTime);
+
+        // 生成唯一的令牌ID
+        String tokenId = UUID.randomUUID().toString();
+
+        var tokenBuilder = Jwts.builder()
+                .id(tokenId)  // jti claim
+                .subject(userId.toString())
+                .claim("username", username)
+                .claim("role", role)
+                .issuedAt(now)
+                .expiration(expirationDate);
+
+        if (sessionId != null && !sessionId.isEmpty()) {
+            tokenBuilder.claim("sessionId", sessionId);
+        }
+
+        String token = tokenBuilder.signWith(secretKey).compact();
+
+        log.debug("Generated JWT token with jti for user: {}, sessionId: {}, jti: {}, rememberMe: {}, expiresAt: {}",
+                username, sessionId, tokenId, rememberMe, expirationDate);
 
         return token;
     }
@@ -102,6 +139,18 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
     }
 
     @Override
+    public String getTokenIdFromToken(String token) {
+        try {
+            Map<String, Object> claims = validateAndParseToken(token);
+            Object jti = claims.get("jti");
+            return jti != null ? jti.toString() : null;
+        } catch (Exception e) {
+            log.warn("Failed to extract jti from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
     public Map<String, Object> validateAndParseToken(String token) {
         try {
             Claims claims = Jwts.parser()
@@ -112,14 +161,16 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
 
             log.debug("Successfully validated JWT token for user: {}", claims.get("username"));
 
-            // 将 Claims 转换为 Map
             Map<String, Object> claimsMap = new HashMap<>();
             claimsMap.put("sub", claims.getSubject());
             claimsMap.put("username", claims.get("username"));
             claimsMap.put("role", claims.get("role"));
             claimsMap.put("iat", claims.getIssuedAt());
             claimsMap.put("exp", claims.getExpiration());
-            // 添加 sessionId（如果存在）
+
+            if (claims.getId() != null) {
+                claimsMap.put("jti", claims.getId());
+            }
             if (claims.get("sessionId") != null) {
                 claimsMap.put("sessionId", claims.get("sessionId"));
             }
@@ -145,9 +196,28 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
     }
 
     @Override
+    public TokenClaims parseTokenClaims(String token) {
+        Map<String, Object> claims = validateAndParseToken(token);
+
+        String sessionId = claims.get("sessionId") != null ? claims.get("sessionId").toString() : null;
+        Long userId = Long.parseLong(claims.get("sub").toString());
+        String username = (String) claims.get("username");
+        String role = (String) claims.get("role");
+        String tokenId = claims.get("jti") != null ? claims.get("jti").toString() : null;
+
+        Date issuedAtDate = (Date) claims.get("iat");
+        Date expiresAtDate = (Date) claims.get("exp");
+
+        Instant issuedAt = issuedAtDate != null ? issuedAtDate.toInstant() : null;
+        Instant expiresAt = expiresAtDate != null ? expiresAtDate.toInstant() : null;
+
+        return new TokenClaims(sessionId, userId, username, role, tokenId, issuedAt, expiresAt, TokenType.ACCESS);
+    }
+
+    @Override
     public Long getUserIdFromToken(String token) {
         Map<String, Object> claims = validateAndParseToken(token);
-        return Long.parseLong((String) claims.get("sub"));
+        return Long.parseLong(claims.get("sub").toString());
     }
 
     @Override
@@ -177,5 +247,19 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
     public Date getExpirationDateFromToken(String token) {
         Map<String, Object> claims = validateAndParseToken(token);
         return (Date) claims.get("exp");
+    }
+
+    @Override
+    public long getRemainingTtl(String token) {
+        try {
+            Date expiration = getExpirationDateFromToken(token);
+            long remainingMs = expiration.getTime() - System.currentTimeMillis();
+            return remainingMs > 0 ? remainingMs / 1000 : 0;
+        } catch (ExpiredJwtException e) {
+            return 0;
+        } catch (Exception e) {
+            log.warn("Failed to get remaining TTL from token: {}", e.getMessage());
+            return 0;
+        }
     }
 }
