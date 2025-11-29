@@ -6,6 +6,7 @@ import com.catface996.aiops.domain.model.auth.DeviceInfo;
 import com.catface996.aiops.domain.model.auth.PasswordStrengthResult;
 import com.catface996.aiops.domain.model.auth.Session;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -349,4 +350,26 @@ public interface AuthDomainService {
      * @return 会话ID，如果 Token 无效或不包含 sessionId 则返回 null
      */
     String getSessionIdFromToken(String token);
+
+    // ==================== 账号管理方法 ====================
+
+    /**
+     * 分页查询所有账号
+     *
+     * <p>分页查询所有账号，用于管理员用户管理功能。</p>
+     *
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @return 账号列表
+     */
+    List<Account> findAllAccounts(int page, int size);
+
+    /**
+     * 统计账号总数
+     *
+     * <p>统计所有账号的数量。</p>
+     *
+     * @return 账号总数
+     */
+    long countAccounts();
 }

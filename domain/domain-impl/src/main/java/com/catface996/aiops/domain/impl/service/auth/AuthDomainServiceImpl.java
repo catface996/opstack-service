@@ -727,4 +727,18 @@ public class AuthDomainServiceImpl implements AuthDomainService {
             return null;
         }
     }
+
+    // ==================== 账号管理方法 ====================
+
+    @Override
+    public List<Account> findAllAccounts(int page, int size) {
+        log.info("分页查询所有账号，page={}, size={}", page, size);
+        return accountRepository.findAll(page, size);
+    }
+
+    @Override
+    public long countAccounts() {
+        log.debug("统计账号总数");
+        return accountRepository.count();
+    }
 }

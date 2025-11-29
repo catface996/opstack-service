@@ -8,10 +8,14 @@ import com.catface996.aiops.domain.model.auth.AccountStatus;
 import com.catface996.aiops.repository.auth.AccountRepository;
 import com.catface996.aiops.repository.mysql.mapper.auth.AccountMapper;
 import com.catface996.aiops.repository.mysql.po.auth.AccountPO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 账号仓储实现类
@@ -147,10 +151,28 @@ public class AccountRepositoryImpl implements AccountRepository {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("邮箱不能为空");
         }
-        
+
         return accountMapper.selectByEmail(email) != null;
     }
-    
+
+    @Override
+    public List<Account> findAll(int page, int size) {
+        // page 已经是 1-based（从1开始），直接传给 MyBatis-Plus
+        Page<AccountPO> pageParam = new Page<>(page, size);
+        QueryWrapper<AccountPO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("created_at");
+
+        Page<AccountPO> resultPage = accountMapper.selectPage(pageParam, queryWrapper);
+        return resultPage.getRecords().stream()
+                .map(this::toEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long count() {
+        return accountMapper.selectCount(null);
+    }
+
     /**
      * 将领域实体转换为持久化对象
      */

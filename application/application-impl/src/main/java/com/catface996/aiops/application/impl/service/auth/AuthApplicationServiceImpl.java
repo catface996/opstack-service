@@ -1,5 +1,6 @@
 package com.catface996.aiops.application.impl.service.auth;
 
+import com.catface996.aiops.application.api.dto.admin.AccountDTO;
 import com.catface996.aiops.application.api.dto.auth.LoginResult;
 import com.catface996.aiops.application.api.dto.auth.RegisterResult;
 import com.catface996.aiops.application.api.dto.auth.SessionValidationResult;
@@ -7,6 +8,7 @@ import com.catface996.aiops.application.api.dto.auth.UserInfo;
 import com.catface996.aiops.application.api.dto.auth.request.ForceLogoutRequest;
 import com.catface996.aiops.application.api.dto.auth.request.LoginRequest;
 import com.catface996.aiops.application.api.dto.auth.request.RegisterRequest;
+import com.catface996.aiops.application.api.dto.common.PageResult;
 import com.catface996.aiops.application.api.service.auth.AuthApplicationService;
 import com.catface996.aiops.common.enums.AuthErrorCode;
 import com.catface996.aiops.common.enums.ParamErrorCode;
@@ -27,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 认证应用服务实现
@@ -655,6 +659,62 @@ public class AuthApplicationServiceImpl implements AuthApplicationService {
                 .role(account.getRole().name())
                 .status(account.getStatus().name())
                 .createdAt(account.getCreatedAt())
+                .build();
+    }
+
+    // ==================== 用户管理方法 ====================
+
+    /**
+     * 获取用户列表（分页）
+     *
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @return 分页的用户列表
+     */
+    @Override
+    public PageResult<AccountDTO> getAccounts(int page, int size) {
+        log.info("[应用层] 获取用户列表, page={}, size={}", page, size);
+
+        // 1. 通过 Domain Service 获取总数
+        long total = authDomainService.countAccounts();
+
+        // 2. 通过 Domain Service 获取分页数据
+        List<Account> accounts = authDomainService.findAllAccounts(page, size);
+
+        // 3. 转换为 DTO
+        List<AccountDTO> accountDTOs = accounts.stream()
+                .map(this::convertToAccountDTO)
+                .collect(Collectors.toList());
+
+        // 4. 记录审计日志
+        logGetAccountsSuccess(page, size, total, accountDTOs.size());
+
+        return PageResult.of(accountDTOs, page, size, total);
+    }
+
+    /**
+     * 记录获取用户列表成功的审计日志
+     */
+    private void logGetAccountsSuccess(int page, int size, long total, int returned) {
+        log.info("[审计日志] 获取用户列表成功 | page={} | size={} | total={} | returned={} | timestamp={}",
+                page, size, total, returned, LocalDateTime.now());
+    }
+
+    /**
+     * 将账号实体转换为管理员 DTO
+     *
+     * @param account 账号实体
+     * @return 账号 DTO
+     */
+    private AccountDTO convertToAccountDTO(Account account) {
+        return AccountDTO.builder()
+                .userId(account.getId())
+                .username(account.getUsername())
+                .email(account.getEmail())
+                .role(account.getRole() != null ? account.getRole().name() : null)
+                .status(account.getStatus() != null ? account.getStatus().name() : null)
+                .createdAt(account.getCreatedAt())
+                .isLocked(account.getStatus() == AccountStatus.LOCKED)
                 .build();
     }
 }

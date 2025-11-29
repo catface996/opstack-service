@@ -1,7 +1,14 @@
 package com.catface996.aiops.interface_.http.controller;
 
+import com.catface996.aiops.application.api.dto.admin.AccountDTO;
+import com.catface996.aiops.application.api.dto.common.PageResult;
 import com.catface996.aiops.application.api.service.auth.AuthApplicationService;
 import com.catface996.aiops.interface_.http.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -63,6 +70,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@Tag(name = "管理员功能", description = "管理员专用的账号管理接口")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AdminController {
 
     private final AuthApplicationService authApplicationService;
@@ -163,5 +172,75 @@ public class AdminController {
 
         log.info("管理员解锁账号成功: accountId={}", accountId);
         return ResponseEntity.ok(ApiResponse.success("账号解锁成功", null));
+    }
+
+    /**
+     * 获取用户列表
+     *
+     * <p>管理员查询用户列表，支持分页。</p>
+     *
+     * <p>请求示例：</p>
+     * <pre>
+     * GET /api/v1/admin/accounts?page=0&size=10
+     * Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
+     * </pre>
+     *
+     * <p>成功响应示例（200 OK）：</p>
+     * <pre>
+     * {
+     *   "code": 0,
+     *   "message": "操作成功",
+     *   "data": {
+     *     "content": [
+     *       {
+     *         "userId": 1,
+     *         "username": "admin",
+     *         "email": "admin@example.com",
+     *         "role": "ROLE_ADMIN",
+     *         "status": "ACTIVE",
+     *         "createdAt": "2025-01-01T00:00:00",
+     *         "isLocked": false
+     *       }
+     *     ],
+     *     "page": 0,
+     *     "size": 10,
+     *     "totalElements": 100,
+     *     "totalPages": 10,
+     *     "first": true,
+     *     "last": false
+     *   }
+     * }
+     * </pre>
+     *
+     * @param page 页码（从1开始），默认1
+     * @param size 每页大小，默认10，最大100
+     * @return 分页的用户列表
+     */
+    @Operation(
+            summary = "获取用户列表",
+            description = "管理员查询用户列表，支持分页。页码从1开始。"
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "查询成功"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Token无效"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "权限不足")
+    })
+    @GetMapping({"/accounts", "/users"})
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResult<AccountDTO>>> getAccounts(
+            @Parameter(description = "页码（从1开始）", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "每页大小（最大100）", example = "10")
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("接收到获取用户列表请求: page={}, size={}", page, size);
+
+        // 边界处理：页码小于1时使用1，size超过100时限制为100
+        int validPage = Math.max(1, page);
+        int validSize = Math.min(Math.max(1, size), 100);
+
+        PageResult<AccountDTO> result = authApplicationService.getAccounts(validPage, validSize);
+
+        log.info("获取用户列表成功: total={}, returned={}", result.getTotalElements(), result.getContent().size());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

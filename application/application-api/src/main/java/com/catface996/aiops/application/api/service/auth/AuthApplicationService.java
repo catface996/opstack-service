@@ -1,11 +1,13 @@
 package com.catface996.aiops.application.api.service.auth;
 
+import com.catface996.aiops.application.api.dto.admin.AccountDTO;
 import com.catface996.aiops.application.api.dto.auth.LoginResult;
 import com.catface996.aiops.application.api.dto.auth.RegisterResult;
 import com.catface996.aiops.application.api.dto.auth.SessionValidationResult;
 import com.catface996.aiops.application.api.dto.auth.request.ForceLogoutRequest;
 import com.catface996.aiops.application.api.dto.auth.request.LoginRequest;
 import com.catface996.aiops.application.api.dto.auth.request.RegisterRequest;
+import com.catface996.aiops.application.api.dto.common.PageResult;
 
 /**
  * 认证应用服务接口
@@ -182,4 +184,21 @@ public interface AuthApplicationService {
      * @throws com.catface996.aiops.common.exception.InvalidTokenException 当 Token 格式错误时抛出
      */
     void unlockAccount(String adminToken, Long accountId);
+
+    /**
+     * 获取用户列表（分页）
+     *
+     * <p>管理员查询用户列表，包括以下信息：</p>
+     * <ul>
+     *   <li>用户ID、用户名、邮箱</li>
+     *   <li>角色、状态</li>
+     *   <li>创建时间</li>
+     *   <li>锁定状态</li>
+     * </ul>
+     *
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @return 分页的用户列表
+     */
+    PageResult<AccountDTO> getAccounts(int page, int size);
 }

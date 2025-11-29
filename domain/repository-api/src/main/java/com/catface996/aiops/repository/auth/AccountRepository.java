@@ -3,6 +3,7 @@ package com.catface996.aiops.repository.auth;
 import com.catface996.aiops.domain.model.auth.Account;
 import com.catface996.aiops.domain.model.auth.AccountStatus;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -162,4 +163,24 @@ public interface AccountRepository {
      * @throws IllegalArgumentException 如果email为空或null
      */
     boolean existsByEmail(String email);
+
+    /**
+     * 分页查询所有账号
+     *
+     * <p>分页查询所有账号，用于管理员用户管理功能。</p>
+     *
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @return 账号列表
+     */
+    List<Account> findAll(int page, int size);
+
+    /**
+     * 统计账号总数
+     *
+     * <p>统计所有账号的数量。</p>
+     *
+     * @return 账号总数
+     */
+    long count();
 }
