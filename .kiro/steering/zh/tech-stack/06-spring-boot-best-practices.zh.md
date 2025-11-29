@@ -8,6 +8,26 @@ inclusion: manual
 
 **重要说明**：本项目采用 DDD 多模块架构，项目结构和分层规范请参考 `05-ddd-multi-module-project-best-practices.md`。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 依赖注入 | MUST 使用构造器注入而非字段注入 | P0 |
+| 配置文件 | MUST 使用 application.yml 而非 .properties | P0 |
+| 事务管理 | MUST 在 Service 层使用 @Transactional | P0 |
+| 异常处理 | MUST 使用全局异常处理器 | P0 |
+| 日志规范 | MUST 使用 @Slf4j，避免 System.out | P0 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **构造器注入** | 使用 @RequiredArgsConstructor + final 字段 | `@RequiredArgsConstructor + private final XxxService service;` | `@Autowired private XxxService service;` |
+| **@Transactional** | 写操作必须有 rollbackFor，查询用 readOnly | `@Transactional(rollbackFor = Exception.class)` | `@Transactional`（无 rollbackFor） |
+| **配置文件** | 使用 YAML 格式，多环境配置 | `application-dev.yml` | `application.properties` |
+| **日志记录** | 使用 SLF4J + 占位符，记录关键操作 | `log.info("用户登录：{}", username)` | `System.out.println("登录")` |
+| **异常处理** | 使用 @RestControllerAdvice 全局处理 | 在 GlobalExceptionHandler 统一处理 | 在每个 Controller 中 try-catch |
+
 ## 核心原则
 
 ### 1. 约定优于配置原则

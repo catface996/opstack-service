@@ -4,6 +4,26 @@ inclusion: manual
 
 # Maven Best Practices
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Module Declaration | MUST match actual structure | P0 |
+| Build Verification | MUST pass after every task | P0 |
+| Dependency Confirmation | MUST obtain user approval before changes | P0 |
+| Progressive Development | NEVER declare non-existent modules | P0 |
+| Version Management | MUST use parent POM dependencyManagement | P1 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Progressive Module Declaration** | Only declare modules that have been created | Modules in POM match actual directories | Pre-declaring modules that don't exist yet |
+| **Build Success Mandatory** | Project MUST build successfully after each task | `mvn clean compile` succeeds | Build fails, "will fix later" |
+| **Dependency Change Confirmation** | MUST obtain explicit user approval before modifying dependencies | Ask user before adding new dependencies | Adding dependencies without permission |
+| **No Inter-Module Version** | Child modules referencing other modules MUST NOT specify versions | `<dependency>` without `<version>` | Hardcoding version in child module |
+| **Dependency Update Sync** | Update parent POM MUST be synchronized with module creation | Add module to parent POM immediately after creation | Creating module but forgetting to update parent |
+
 ## Progressive Development Principle
 
 ### Core Principles

@@ -2,20 +2,56 @@
 inclusion: manual
 ---
 
+# Task Planning Best Practices
+
+---
+
+## Quick Reference: Task Quality Criteria
+
+| Criterion | Requirement | Failure Consequence |
+|-----------|-------------|---------------------|
+| Single Responsibility | One clear goal per task | ❌ Complex, hard to verify |
+| Appropriate Granularity | 1-4 hours to complete | ❌ Unmanageable or trivial |
+| Independently Verifiable | Clear acceptance criteria | ❌ Can't confirm completion |
+| Reasonable Dependencies | No circular dependencies | ❌ Execution blocked |
+| Incremental Delivery | Each task adds value | ❌ No progress visibility |
+
+---
+
+## Phase -1: Pre-Planning Gates (NON-NEGOTIABLE)
+
+*GATE: Must pass before starting task breakdown.*
+
+### Design Completeness Check
+- [ ] Design document exists at `.kiro/features/{feature-id}/plan.md`?
+- [ ] Design has been validated and approved by user?
+- [ ] All design decisions documented (with ADRs)?
+- [ ] Architecture diagrams and interface definitions complete?
+
+### Understanding Check
+- [ ] Fully understand the architecture pattern?
+- [ ] Clear on module boundaries and responsibilities?
+- [ ] Understand inter-module dependencies?
+- [ ] Identified all technical difficulties and risks?
+
+**If check fails**: STOP, complete or clarify design first.
+
+---
+
 ## Phase Goal
 
-Break down the design solution into independently executable, verifiable specific tasks, ensuring each task has clear goals and acceptance criteria.
+Break down the design solution into **INDEPENDENTLY EXECUTABLE, VERIFIABLE** specific tasks, ensuring each task has **CLEAR** goals and acceptance criteria.
 
 ## Why Task Breakdown is So Important
 
-Task breakdown is a critical step in transforming design into executable steps. Good task breakdown can:
-- Improve development efficiency and quality
-- Reduce coupling between tasks
-- Support parallel development and incremental delivery
-- Facilitate progress tracking and risk control
-- Ensure deliverable verifiability
+Task breakdown is a **CRITICAL** step in transforming design into executable steps. Good task breakdown can:
+- ✅ Improve development efficiency and quality
+- ✅ Reduce coupling between tasks
+- ✅ Support parallel development and incremental delivery
+- ✅ Facilitate progress tracking and risk control
+- ✅ Ensure deliverable verifiability
 
-**Key Principle**: Tasks must be both executable and verifiable.
+**Key Principle**: Tasks **MUST** be both executable and verifiable.
 
 ## Task Breakdown Workflow
 
@@ -131,75 +167,146 @@ Confirm task list with user, ensure consistent understanding.
 
 **Only after user explicitly confirms can task execution begin.**
 
-## Acceptance Principles
+## Acceptance Principles (NON-NEGOTIABLE)
 
-**Core Requirement**: Each acceptance criterion must clearly mark verification method using 【Verification Method】tag.
+**Core Requirement**: Each acceptance criterion **MUST** clearly mark verification method using 【Verification Method】tag.
 
-Task acceptance should follow this priority order:
+Task acceptance **MUST** follow this priority order:
 
-### 1. 【Runtime Verification】(Highest Priority)
-Features that can be verified by actually running the application must be verified by running the application.
+---
+
+### Verification Priority Hierarchy
+
+| Priority | Method | Use When | DON'T Use If... |
+|----------|--------|----------|-----------------|
+| 1️⃣ Highest | 【Runtime Verification】 | Feature can run in app | - |
+| 2️⃣ High | 【Unit Test】 | Business logic testable | Runtime verification possible |
+| 3️⃣ Medium | 【Build Verification】 | Structural changes | Runtime/unit test possible |
+| 4️⃣ Last Resort | 【Static Check】 | File/config checks only | Any higher method possible |
+
+**STRICT RULE**: **ALWAYS** use the highest possible verification method. **NEVER** use lower methods when higher ones are applicable.
+
+---
+
+### 1. 【Runtime Verification】(Highest Priority) ⭐
+
+**MANDATORY FOR**: Features that can be verified by actually running the application **MUST** be verified by running the application.
 
 **Applicable Scenarios**:
-- Configuration verification (multi-environment, feature toggles, etc.)
-- API endpoint functionality verification
-- Log output format verification
-- Exception handling verification
-- Integration functionality verification
-- External service connection verification
+- ✅ Configuration verification (multi-environment, feature toggles, etc.)
+- ✅ API endpoint functionality verification
+- ✅ Log output format verification
+- ✅ Exception handling verification
+- ✅ Integration functionality verification
+- ✅ External service connection verification
 
 **Verification Method**:
-- Start application (using project's startup command)
-- Access relevant endpoints or trigger relevant functionality
-- Check actual runtime results meet expectations
+1. Start application (using project's startup command)
+2. Access relevant endpoints or trigger relevant functionality
+3. Check actual runtime results meet expectations
+
+**Example Acceptance Criterion**:
+```
+- [ ] User login API returns 200 status code
+  【Runtime Verification】: Start app, POST to /api/login, verify response
+```
+
+---
 
 ### 2. 【Unit Test】(Second Priority)
-Business logic and algorithms should be verified through unit tests.
+
+**USE FOR**: Business logic and algorithms that **CANNOT** be easily verified at runtime.
 
 **Applicable Scenarios**:
-- Service layer business logic
-- Utility class methods
-- Algorithm implementations
-- Data transformation logic
+- ✅ Service layer business logic
+- ✅ Utility class methods
+- ✅ Algorithm implementations
+- ✅ Data transformation logic
 
 **Verification Method**:
 - Execute unit test command (e.g., `mvn test`)
-- Check test coverage
+- Check test coverage ≥ 80%
 - Verify all test cases pass
 
+**Example Acceptance Criterion**:
+```
+- [ ] Password validation logic handles all edge cases
+  【Unit Test】: Run `mvn test`, verify PasswordValidator tests pass
+```
+
+---
+
 ### 3. 【Build Verification】(Third Priority)
-For structural requirements that cannot be verified through runtime, verify through project build.
+
+**USE FOR**: Structural requirements that **CANNOT** be verified through runtime or tests.
 
 **Applicable Scenarios**:
-- Module/component structure verification
-- Dependency relationship verification
-- Build configuration verification
-- Code syntax correctness verification
+- ✅ Module/component structure verification
+- ✅ Dependency relationship verification
+- ✅ Build configuration verification
+- ✅ Code syntax correctness verification
 
 **Verification Method**:
 - Execute project's build command to ensure build success
 - Check build logs for component order and dependencies
 - Confirm build artifacts meet expectations
 
-### 4. 【Static Check】(Last Resort)
-Only use static file check when cannot verify through above methods.
+**Example Acceptance Criterion**:
+```
+- [ ] New module successfully integrated into build
+  【Build Verification】: Run `mvn clean package`, verify build success
+```
+
+---
+
+### 4. 【Static Check】(Last Resort) ⚠️
+
+**ONLY USE IF**: **ABSOLUTELY NO** higher verification method is applicable.
 
 **Applicable Scenarios**:
-- File existence check
-- Configuration file content check
-- Directory structure check
+- ⚠️ File existence check
+- ⚠️ Configuration file content check
+- ⚠️ Directory structure check
 
 **Verification Method**:
 - Check if files exist
 - Check if file content meets requirements
 
-**Verification Method Selection Principle**:
+**Example Acceptance Criterion**:
+```
+- [ ] Configuration file created with correct format
+  【Static Check】: Verify config.yml exists and contains required fields
+```
 
-Prefer higher-level verification methods:
-- If can runtime verify, don't use unit tests
-- If can unit test, don't use build verification
-- If can build verify, don't use static check
-- One task can include multiple verification methods
+---
+
+## Verification Method Selection Rules
+
+### Decision Tree
+
+```
+Can feature be tested by running the app?
+├─ YES → 【Runtime Verification】 ✓
+└─ NO → Can it be unit tested?
+    ├─ YES → 【Unit Test】 ✓
+    └─ NO → Does it affect build structure?
+        ├─ YES → 【Build Verification】 ✓
+        └─ NO → 【Static Check】 (last resort)
+```
+
+### If...Then Rules
+
+- **If feature has API endpoint** → THEN **MUST** use 【Runtime Verification】
+- **If feature has business logic** → THEN **MUST** use 【Unit Test】 (if runtime not possible)
+- **If task adds new module** → THEN **MUST** use 【Build Verification】
+- **If only file creation** → THEN can use 【Static Check】
+
+**ABSOLUTELY PROHIBITED**:
+- ❌ Using 【Static Check】 when 【Runtime Verification】 is possible
+- ❌ Using 【Build Verification】 when 【Unit Test】 is possible
+- ❌ Mixing verification levels inappropriately
+
+**BEST PRACTICE**: One task can include multiple verification methods (e.g., 【Build Verification】 + 【Runtime Verification】)
 
 ## Three Levels of Task Description
 

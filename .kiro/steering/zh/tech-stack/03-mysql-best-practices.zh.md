@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档指导 AI 如何编写高质量、高性能、安全的 MySQL SQL 语句。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 参数化查询 | MUST 使用 #{} 而非 ${} | P0 |
+| WHERE 条件 | MUST 在 UPDATE/DELETE 中使用 WHERE | P0 |
+| 索引使用 | MUST 避免在索引列上使用函数 | P0 |
+| 列名明确 | MUST 明确指定列名，避免 SELECT * | P1 |
+| 过期时间 | MUST 在 WHERE 中避免函数操作时间字段 | P1 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **参数化查询** | 防止 SQL 注入，必须使用参数绑定 | `WHERE id = #{id}` | `WHERE id = ${id}` |
+| **WHERE 必填** | UPDATE/DELETE 必须有 WHERE 条件 | `UPDATE user SET name=? WHERE id=?` | `UPDATE user SET name=?` |
+| **索引优化** | 避免在 WHERE 中对列进行函数操作 | `WHERE create_time >= '2024-01-01'` | `WHERE DATE(create_time) >= '2024-01-01'` |
+| **列名明确** | 明确指定需要的列，避免 SELECT * | `SELECT id, name FROM user` | `SELECT * FROM user` |
+| **批量操作** | 使用批量插入而非循环单条 | `INSERT INTO (a,b) VALUES (1,2),(3,4)` | 循环执行 INSERT |
+
 ## 核心原则
 
 ### 1. 安全第一原则

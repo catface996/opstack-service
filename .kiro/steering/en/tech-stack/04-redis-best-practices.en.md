@@ -6,6 +6,27 @@ inclusion: manual
 
 This document guides AI on how to correctly, efficiently, and securely use Redis cache.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Expiration Time | MUST set expiration for all cache keys | P0 |
+| Key Naming | MUST follow business-module:function:id format | P0 |
+| Cache Update | MUST update database first, then delete cache | P0 |
+| Large Keys | NEVER exceed 10KB for single key value | P0 |
+| Distributed Lock | MUST set expiration time, NEVER permanent | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Mandatory Expiration** | ALL cached data MUST have expiration times | `setex(key, 3600, value)` | `set(key, value)` without expiration |
+| **Key Naming Standard** | STRICTLY follow colon-separated format | `user:info:1001` | `user_1001` or random naming |
+| **Cache Aside Pattern** | MUST update DB first, then delete cache | 1. Update DB 2. Delete cache | Update cache directly or update cache before DB |
+| **No Large Keys** | Single value MUST NOT exceed 10KB | Split large data or use Hash | Store 5MB JSON in single key |
+| **No Hot Keys** | NEVER let single key handle excessive requests | Use local cache or split keys | Single key with millions of QPS |
+| **Lock Expiration** | Distributed locks MUST have timeout | `SET lock NX EX 30` | `SET lock NX` without expiration |
+
 ## Core Principles
 
 ### 1. Cache Design Principles

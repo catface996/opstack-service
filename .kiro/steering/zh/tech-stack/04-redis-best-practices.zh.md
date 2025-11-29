@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档指导 AI 如何正确、高效、安全地使用 Redis 缓存。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 过期时间 | MUST 为所有缓存设置过期时间 | P0 |
+| Key 命名 | MUST 使用 业务:功能:ID 格式 | P0 |
+| 大 Key | NEVER 单个 Value 超过 10KB | P0 |
+| 缓存策略 | MUST 先更新数据库后删除缓存 | P0 |
+| 防护机制 | MUST 实现缓存穿透/击穿/雪崩防护 | P1 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **过期时间** | 所有缓存必须设置 TTL | `setex key 3600 value` | `set key value`（无过期时间） |
+| **Key 命名** | 使用冒号分隔层级，见名知意 | `user:info:1001` | `u1001` 或 `userInfo1001` |
+| **大 Key 限制** | 单个 Value 不超过 10KB | 拆分或使用 Hash | 存储 1MB 的 JSON |
+| **缓存更新** | 先更新数据库，再删除缓存 | `update DB → delete cache` | `update cache → update DB` |
+| **批量操作** | 使用 Pipeline 或 MGET/MSET | `mget key1 key2 key3` | 循环执行 `get key` |
+
 ## 核心原则
 
 ### 1. 缓存设计原则

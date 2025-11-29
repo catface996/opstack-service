@@ -4,6 +4,26 @@ inclusion: manual
 
 # 测试最佳实践
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 测试金字塔 | MUST 遵循 70% 单元 + 20% 集成 + 10% E2E | P0 |
+| 测试命名 | MUST 使用 should_期望结果_when_条件 格式 | P0 |
+| 测试隔离 | MUST 使用 TestContainers 或唯一数据 | P0 |
+| Mock 使用 | MUST 在单元测试中 Mock 外部依赖 | P0 |
+| 覆盖率目标 | MUST 核心业务逻辑覆盖率 > 80% | P1 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **测试金字塔** | 单元测试为主，集成测试为辅，E2E 最少 | 70% 单元 + 20% 集成 + 10% E2E | 只写 E2E 测试或只写集成测试 |
+| **命名规范** | 测试方法名清晰描述测试意图 | `should_ReturnToken_when_ValidCredentials()` | `testLogin()` 或 `test1()` |
+| **TestContainers** | 集成测试使用真实数据库容器 | `@Container MySQLContainer mysql` | 使用 H2 模拟 MySQL（行为差异） |
+| **AAA 模式** | Arrange-Act-Assert 结构清晰 | 分三段组织测试代码 | 所有代码混在一起 |
+| **数据隔离** | 使用唯一标识避免测试间干扰 | `username = "test_" + nanoTime()` | 多个测试使用相同的 "testuser" |
+
 ## 1. 测试分层策略
 
 ### 1.1 测试金字塔

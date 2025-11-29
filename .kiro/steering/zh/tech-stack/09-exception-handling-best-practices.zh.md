@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档详细说明 Java/Spring Boot 应用中异常设计、继承体系和处理的最佳实践。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| ErrorCode 枚举 | MUST 使用 ErrorCode 枚举而非字符串 | P0 |
+| 异常继承 | MUST 使用继承体系组织异常类 | P0 |
+| 保留 Cause | MUST 捕获异常时保留原始异常 | P0 |
+| 全局处理 | MUST 使用 @RestControllerAdvice 统一处理 | P0 |
+| 敏感信息 | NEVER 向客户端暴露系统内部细节 | P0 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **ErrorCode 枚举** | 类型安全的错误码管理 | `throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS)` | `throw new BusinessException("AUTH_001", "错误")` |
+| **异常继承** | 通过父类统一处理同类异常 | `catch (BusinessException e)` 捕获所有业务异常 | `catch (ExceptionA \| ExceptionB \| ExceptionC e)` |
+| **保留 Cause** | 保留完整异常链便于调试 | `throw new BusinessException(code, e)` | `throw new BusinessException(code)`（丢失原始异常） |
+| **HTTP 映射** | 根据错误码前缀自动映射状态码 | AUTH_ → 401, PARAM_ → 400, SYS_ → 500 | 所有异常都返回 200 |
+| **参数化消息** | 使用消息模板 + 参数 | `ErrorCode("LOCKED", "账号已锁定{0}分钟")` + args | 字符串拼接："账号已锁定" + time + "分钟" |
+
 ## 核心原则
 
 ### 1. 异常继承体系原则

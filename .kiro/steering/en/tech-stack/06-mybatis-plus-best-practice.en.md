@@ -4,6 +4,26 @@ inclusion: manual
 
 # MyBatis-Plus Best Practices Guide
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| SQL in XML | MUST define conditional queries in Mapper XML | P0 |
+| MyBatis-Plus for Simple Ops | Use MyBatis-Plus API ONLY for insert/update by ID/query by ID | P0 |
+| No Wrapper in Service | NEVER use QueryWrapper/UpdateWrapper in Service layer | P0 |
+| Logical Delete | MUST use @TableLogic for delete operations | P1 |
+| Auto-Fill Fields | MUST use MetaObjectHandler for create_time/update_time | P1 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Conditional Queries in XML** | ALL conditional queries MUST be defined in Mapper XML | Define SQL in `UserMapper.xml` | Use `lambdaQuery().eq().list()` in Service |
+| **No Wrapper in Business Code** | STRICTLY FORBIDDEN to use QueryWrapper/UpdateWrapper | `userMapper.selectByUsername(username)` | `lambdaQuery().eq(User::getUsername, username)` |
+| **MyBatis-Plus Allowed Ops** | ONLY use for insert/updateById/getById operations | `save()`, `updateById()`, `getById()` | `update(wrapper)`, `list(wrapper)` |
+| **XML for All Complex Queries** | Multi-table JOIN, subqueries MUST be in XML | Define in Mapper XML file | Build complex queries with Wrapper |
+| **Unified SQL Management** | All SQL MUST be centrally managed for review | All queries visible in XML files | SQL scattered in Java code |
+
 ## Why Choose MyBatis-Plus
 
 MyBatis-Plus (MP for short) is an enhancement tool for MyBatis that only adds features without making changes.

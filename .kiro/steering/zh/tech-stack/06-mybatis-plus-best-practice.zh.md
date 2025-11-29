@@ -4,6 +4,26 @@ inclusion: manual
 
 # MyBatis-Plus 最佳实践指南
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| SQL 定义位置 | MUST 条件查询在 Mapper XML 中定义 | P0 |
+| Wrapper 使用 | NEVER 在 Service 中使用 Wrapper | P0 |
+| API 使用 | MUST 插入/更新/主键查询使用 MP API | P0 |
+| XML 管理 | MUST 所有复杂查询在 XML 中集中管理 | P0 |
+| 参数化查询 | MUST 使用 #{} 而非 ${} | P0 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **XML 查询** | 所有条件查询必须在 Mapper XML 中定义 | `baseMapper.selectByUsername(name)` | `list(new LambdaQueryWrapper<>().eq(...))` |
+| **API 使用** | 插入/更新使用 MP API | `save(entity)` 或 `updateById(entity)` | 在 Service 中使用 UpdateWrapper |
+| **SQL 管理** | 复杂 SQL 在 XML 中集中管理便于审查 | 在 UserMapper.xml 定义 SQL | 在 Service 中动态构造 SQL |
+| **参数安全** | 使用参数化查询防止注入 | `WHERE id = #{id}` | `WHERE id = ${id}` |
+| **批量操作** | 条件批量操作在 XML 中定义 | `updateStatusBatch(ids, status)` | 使用 UpdateWrapper 批量更新 |
+
 ## 为什么选择 MyBatis-Plus
 
 MyBatis-Plus（简称 MP）是 MyBatis 的增强工具，在 MyBatis 的基础上只做增强不做改变。

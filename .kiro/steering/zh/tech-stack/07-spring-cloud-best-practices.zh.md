@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档指导 AI 如何正确、高效地使用 Spring Cloud 构建微服务架构。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 服务发现 | MUST 使用 Nacos 注册服务 | P0 |
+| 配置管理 | MUST 使用配置中心集中管理 | P0 |
+| 熔断降级 | MUST 实现 Fallback 和 Circuit Breaker | P0 |
+| 链路追踪 | MUST 配置 Sleuth + Zipkin | P1 |
+| 服务通信 | NEVER 使用 IP 地址直接调用 | P0 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **服务发现** | 使用服务名调用，支持负载均衡 | `@FeignClient(name="user-service")` | `RestTemplate.get("http://192.168.1.10:8080")` |
+| **配置中心** | 敏感配置集中管理，支持动态刷新 | Nacos Config + @RefreshScope | 配置硬编码在代码中 |
+| **熔断降级** | 提供 Fallback 避免雪崩 | `@FeignClient(fallbackFactory=XxxFallback.class)` | 无降级处理直接失败 |
+| **链路追踪** | 自动传递 TraceId 便于排查 | Sleuth 自动在日志中打印 TraceId | 无链路追踪，问题难定位 |
+| **监控告警** | 暴露健康检查和指标端点 | Actuator + Prometheus + Grafana | 无监控，问题发现不及时 |
+
 ## 核心原则
 
 ### 1. 服务拆分原则

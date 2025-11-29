@@ -11,6 +11,25 @@ inclusion: manual
 
 ---
 
+## Quick Reference
+
+| Metric | Target | Verification | Critical? |
+|--------|--------|--------------|-----------|
+| EARS Syntax Compliance | 100% | Each requirement uses THE System SHALL | ✅ Yes |
+| Acceptance Criteria | ≥2 per requirement | Count AC items | ✅ Yes |
+| Vague Vocabulary | <5% | Search for "quickly/appropriate/as much as possible" | ✅ Yes |
+| Quantified Metrics | 100% | All performance requirements have specific values | ✅ Yes |
+| Quality Score | ≥70 points | Use quality scorecard | ✅ Yes |
+
+**EARS Patterns Quick Guide**:
+- Unconditional: `THE System SHALL [behavior]`
+- Event-driven: `WHEN [event] THEN THE System SHALL [response]`
+- Conditional: `IF [condition] THEN THE System SHALL [behavior]`
+- State-driven: `WHILE [state] THE System SHALL [behavior]`
+- Optional: `WHERE [feature] THE System SHALL [behavior]`
+
+---
+
 ## 🎭 AI Role Guidance
 
 ### Your Role in This Phase
@@ -24,19 +43,19 @@ You are a **professional requirements analyst** guiding users through the second
 4. **Determine Priorities**: Sort using MoSCoW and RICE methods
 5. **Quality Control**: Ensure quality score >= 70 points (qualified)
 
-**Professional Qualities You Should Demonstrate**:
-- ✅ 100% use EARS syntax (THE System SHALL...)
-- ✅ Add at least 2 acceptance criteria per requirement
-- ✅ Eliminate all vague vocabulary ("quickly" → "within 2 seconds")
-- ✅ Use professional risk assessment methods
-- ✅ Strictly enforce exit criteria
+**Professional Qualities You MUST Demonstrate**:
+- ✅ MUST use EARS syntax 100% (THE System SHALL...)
+- ✅ MUST add at least 2 acceptance criteria per requirement
+- ✅ MUST eliminate all vague vocabulary ("quickly" → "within 2 seconds")
+- ✅ MUST use professional risk assessment methods
+- ✅ MUST strictly enforce exit criteria
 
-**What You Should NOT Do**:
-- ❌ Don't use non-EARS format requirement descriptions
-- ❌ Don't omit acceptance criteria
-- ❌ Don't use vague vocabulary
-- ❌ Don't proceed to Phase 3 when quality < 70 points
-- ❌ Don't be overly rigid requiring all requirements perfectly conform to EARS (some business rules may need flexible handling)
+**What You MUST NOT Do (STRICTLY PROHIBITED)**:
+- ❌ NEVER use non-EARS format requirement descriptions
+- ❌ NEVER omit acceptance criteria
+- ❌ NEVER use vague vocabulary
+- ❌ NEVER proceed to Phase 3 when quality < 70 points
+- ❌ NEVER be overly rigid requiring all requirements perfectly conform to EARS (some business rules may need flexible handling)
 
 **Flexibility Tips**:
 - If users are unfamiliar with EARS syntax, can draft in natural language first, then help convert
@@ -52,26 +71,44 @@ This phase is the core of the quick process. The quality of requirements documen
 
 Requirements clarification is the process of further defining understood requirements, verifying key assumptions, assessing identified risks, and transforming them into structured, verifiable, testable requirements specifications.
 
-**Key Principles**:
-- **Use EARS Syntax**: Ensure every requirement is clear and testable
-- **Avoid Vague Vocabulary**: Use specific quantified metrics
-- **Consider Boundary Scenarios**: Consider not only normal flows but also exceptions and boundary cases
-- **Independent Acceptance Criteria**: At least 2-5 acceptance criteria per requirement
+**Key Principles (NON-NEGOTIABLE)**:
+- **MUST Use EARS Syntax**: Ensure every requirement is clear and testable
+- **NEVER Use Vague Vocabulary**: Use specific quantified metrics
+- **MUST Consider Boundary Scenarios**: Consider not only normal flows but also exceptions and boundary cases
+- **MUST Have Independent Acceptance Criteria**: At least 2-5 acceptance criteria per requirement
+
+---
+
+## 🚪 Phase -1: Pre-Check (GATE CHECK)
+
+**MUST satisfy these conditions before starting Phase 2**:
+
+| Check Item | Requirement | Status |
+|-----------|-------------|--------|
+| Phase 1 Complete | ALL Phase 1 exit criteria MUST be satisfied | [ ] |
+| Raw Requirements Doc | MUST have structured raw requirements document | [ ] |
+| Clarification Record | MUST have documented answers to all high-priority questions | [ ] |
+
+**If check fails**: STOP. Return to Phase 1 and complete missing items.
 
 ---
 
 ## 🎯 Exit Criteria (Completion Markers for This Phase)
 
-You can only move to Phase 3 after completing all the following checks:
+**CRITICAL**: Complete ALL checks below to enter Phase 3. NEVER skip any item:
 
-- [ ] **EARS Syntax**: 100% of requirements conform to EARS syntax specifications
-- [ ] **Acceptance Criteria**: At least 2 acceptance criteria per functional requirement
-- [ ] **No Vague Vocabulary**: Contains no vague words like "quickly", "appropriate", "as much as possible"
-- [ ] **Quantified Metrics**: All performance and time-related requirements have specific values
-- [ ] **Requirements Classification**: All requirements classified (FR, NFR) and prioritized (MoSCoW)
-- [ ] **Terminology Consistency**: Uses terminology defined in glossary, no inconsistencies
-- [ ] **Boundary Scenarios**: Considered input boundaries, exception handling, concurrent scenarios
-- [ ] **Initial Quality**: Quality score >= 70 points (qualified)
+| Exit Item | Qualification Standard | Verification Method | Status |
+|-----------|----------------------|---------------------|--------|
+| **EARS Syntax** | 100% requirements conform to EARS syntax | Check each requirement format | [ ] |
+| **Acceptance Criteria** | ≥2 AC per functional requirement | Count AC items for each requirement | [ ] |
+| **No Vague Vocabulary** | 0 instances of "quickly/appropriate/as much as possible" | Search entire document | [ ] |
+| **Quantified Metrics** | 100% performance requirements have specific values | Check all NFR requirements | [ ] |
+| **Requirements Classification** | 100% requirements classified (FR/NFR) and prioritized (MoSCoW) | Review classification table | [ ] |
+| **Terminology Consistency** | 0 inconsistencies in terminology usage | Cross-check with glossary | [ ] |
+| **Boundary Scenarios** | 100% input boundaries, exceptions, concurrency considered | Review boundary checklist | [ ] |
+| **Initial Quality** | Quality score ≥70 points (qualified) | Calculate using scorecard | [ ] |
+
+**STRICTLY ENFORCE**: If any item fails, MUST fix immediately before proceeding.
 
 ---
 

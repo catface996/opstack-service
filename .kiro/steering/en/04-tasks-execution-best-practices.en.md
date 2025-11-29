@@ -4,20 +4,57 @@ inclusion: always
 
 # Task Execution Phase Best Practices
 
+---
+
+## Quick Reference: Execution Checklist
+
+| Stage | Must Complete | Gate |
+|-------|--------------|------|
+| Before Start | Understand task + confirm preconditions | ✓ |
+| During Implementation | Follow code standards + progressive development | - |
+| After Implementation | Verify acceptance criteria | ✓ |
+| After Verification | **Build must succeed** | ✓ MANDATORY |
+| After Build | Consistency check with requirements/design | ✓ |
+
+**IRON RULE #1**: After each task, **PROJECT MUST BUILD SUCCESSFULLY**
+**IRON RULE #2**: After each task, **MUST CHECK CONSISTENCY** with requirements and design
+
+---
+
+## Phase -1: Pre-Execution Gates (NON-NEGOTIABLE)
+
+*GATE: Must pass before executing tasks.*
+
+### Task List Readiness Check
+- [ ] Task list exists at `.kiro/features/{feature-id}/tasks.md`?
+- [ ] Task list validated against requirements and design?
+- [ ] Task dependencies clearly mapped?
+- [ ] All acceptance criteria include verification methods?
+
+### Environment Readiness Check
+- [ ] Development environment set up and working?
+- [ ] Project builds successfully in current state?
+- [ ] All prerequisite tasks completed?
+- [ ] Understand the task's acceptance criteria?
+
+**If check fails**: STOP, resolve issues before starting execution.
+
+---
+
 ## Phase Goal
 
-Execute tasks one by one according to task list, transform design into runnable code, ensure project is in healthy state after each task completion.
+Execute tasks one by one according to task list, transform design into **RUNNABLE CODE**, ensure project is in **HEALTHY STATE** after each task completion.
 
 ## Why Task Execution Phase is So Important
 
-Task execution is a critical phase for turning design into reality. Good execution practices can:
-- Ensure project continuous healthy state
-- Discover and solve problems early
-- Improve code quality and maintainability
-- Support team collaborative development
-- Reduce integration and deployment risks
+Task execution is a **CRITICAL** phase for turning design into reality. Good execution practices can:
+- ✅ Ensure project **CONTINUOUS HEALTHY STATE**
+- ✅ Discover and solve problems **EARLY**
+- ✅ Improve code quality and maintainability
+- ✅ Support team collaborative development
+- ✅ Reduce integration and deployment risks
 
-**Core Principle**: After each task completion, project must successfully build.
+**Core Principle (NON-NEGOTIABLE)**: After each task completion, project **MUST SUCCESSFULLY BUILD**.
 
 ## Task Execution Workflow
 
@@ -37,20 +74,30 @@ Implement functionality according to task description.
 
 **Implementation Principles**:
 
-#### 1. Keep Project Continuously Buildable
+#### 1. Keep Project Continuously Buildable (MANDATORY)
 
-**Key Requirement**: After each task completion, entire project must be successfully buildable.
+**Key Requirement**: After each task completion, entire project **MUST** be successfully buildable.
 
 **Why Important**:
-- Project always in runnable state
-- Discover integration problems timely
-- Support continuous integration and continuous delivery
-- Reduce later integration risk
+- ✅ Project always in **RUNNABLE STATE**
+- ✅ Discover integration problems **IMMEDIATELY**
+- ✅ Support continuous integration and continuous delivery
+- ✅ Reduce later integration risk (cost savings: 10-50x)
 
 **How to Achieve**:
-- Run build command immediately after completing task
-- Ensure build success before entering next task
-- Fix immediately when encountering build failure
+- ✅ Run build command **IMMEDIATELY** after completing task
+- ✅ Ensure build success **BEFORE** entering next task
+- ✅ Fix **IMMEDIATELY** when encountering build failure
+
+**If...Then Rules**:
+- **If build fails** → THEN **STOP** everything, fix before proceeding
+- **If build succeeds** → THEN proceed to verification
+- **If uncertain about build** → THEN **BUILD AND CHECK**
+
+**ABSOLUTELY PROHIBITED**:
+- ❌ Moving to next task without building
+- ❌ Assuming "it will probably build"
+- ❌ Accumulating multiple tasks before building
 
 #### 2. Progressive Development
 
@@ -140,87 +187,124 @@ Confirm task is completely done, meets all acceptance criteria.
 - Code quality meets standards
 - Related documentation updated (if needed)
 
-### Step 5: Requirements and Design Consistency Check
+### Step 5: Requirements and Design Consistency Check (MANDATORY)
 
-**Key**: After task verification passes, must conduct requirements and design consistency check to ensure implementation conforms to original intent.
+**Key**: After task verification passes, **MUST** conduct requirements and design consistency check to ensure implementation conforms to original intent.
 
 **Why Important**:
-- Task may pass acceptance criteria but deviate from requirement intent
-- Implementation may violate design's architecture principles
-- Discover deviations early, avoid accumulating technical debt
-- Ensure overall solution consistency and completeness
+- ⚠️ Task may pass acceptance criteria but **DEVIATE** from requirement intent
+- ⚠️ Implementation may **VIOLATE** design's architecture principles
+- ✅ Discover deviations early, avoid accumulating technical debt
+- ✅ Ensure overall solution consistency and completeness
 
-**Check Dimensions**:
+---
+
+## Consistency Check Matrix
+
+| Check Type | Questions to Answer | Action if Deviation Found |
+|-----------|---------------------|---------------------------|
+| Requirements | Does it meet requirement intent? | ❌ **STOP** - Fix or clarify |
+| Design | Does it follow architecture? | ❌ **STOP** - Fix or update design |
+| Scope | Any over-engineering? | ⚠️ Discuss with user |
+| Quality | Meets non-functional requirements? | ⚠️ Improve if needed |
+
+---
 
 #### 1. Requirements Consistency Check
 
-Verify whether task implementation truly meets corresponding requirements.
+**MUST** verify whether task implementation truly meets corresponding requirements.
 
-**Check Points**:
+**Mandatory Check Points**:
 - [ ] What are task-related requirements? (Check `_Requirements:_` marking in task)
-- [ ] Does implementation completely cover all acceptance criteria of requirements?
-- [ ] Does implementation accurately understand requirement intent?
-- [ ] Is there implementation beyond requirement scope (over-design)?
-- [ ] Are there missing requirement points?
+- [ ] Does implementation **COMPLETELY** cover all acceptance criteria of requirements?
+- [ ] Does implementation **ACCURATELY** understand requirement intent?
+- [ ] Is there implementation **BEYOND** requirement scope (over-design)?
+- [ ] Are there **MISSING** requirement points?
 
 **Verification Method**:
-- Open requirements document, find corresponding requirement item
-- Check each requirement acceptance criterion
-- Confirm implementation meets every acceptance criterion
-- If deviation exists, record reason and assess impact
+1. Open requirements document (`.kiro/features/{feature-id}/spec.md`)
+2. Find corresponding requirement item by number
+3. Check **EACH** requirement acceptance criterion
+4. Confirm implementation meets **EVERY** acceptance criterion
+5. If deviation exists, record reason and assess impact
+
+**If...Then Rules**:
+- **If requirement not met** → THEN **STOP** and fix implementation
+- **If over-engineered** → THEN discuss with user, possibly remove
+- **If requirement missing** → THEN add to task list
+
+---
 
 #### 2. Design Consistency Check
 
-Verify whether task implementation follows architecture and technical solution in design document.
+**MUST** verify whether task implementation follows architecture and technical solution in design document.
 
-**Check Points**:
-- [ ] Does implementation follow architecture pattern in design document?
-- [ ] Do module division and responsibility boundaries conform to design?
-- [ ] Are interface definitions consistent with design?
-- [ ] Does data model conform to design specification?
-- [ ] Is technology selection consistent with design?
-- [ ] Does it follow non-functional requirements in design (performance, security, etc.)?
+**Mandatory Check Points**:
+- [ ] Does implementation follow **ARCHITECTURE PATTERN** in design document?
+- [ ] Do **MODULE DIVISION** and responsibility boundaries conform to design?
+- [ ] Are **INTERFACE DEFINITIONS** consistent with design?
+- [ ] Does **DATA MODEL** conform to design specification?
+- [ ] Is **TECHNOLOGY SELECTION** consistent with design?
+- [ ] Does it follow **NON-FUNCTIONAL REQUIREMENTS** in design (performance, security, etc.)?
 
 **Verification Method**:
-- Open design document, find related design chapter
-- Compare with architecture diagrams, module division, interface definitions in design
-- Confirm implementation conforms to design specifications
-- If deviation exists, assess whether there's reasonable reason
+1. Open design document (`.kiro/features/{feature-id}/plan.md`)
+2. Find related design chapter
+3. Compare with architecture diagrams, module division, interface definitions in design
+4. Confirm implementation conforms to design specifications
+5. If deviation exists, assess whether there's reasonable reason
 
-#### 3. Deviation Handling
+**If...Then Rules**:
+- **If architecture violated** → THEN **STOP** and refactor
+- **If interface mismatch** → THEN fix implementation or update design
+- **If technology differs** → THEN must have documented ADR justification
 
-If implementation deviates from requirements or design:
+---
+
+#### 3. Deviation Handling (Decision Matrix)
+
+| Deviation Type | Impact | Action Required | Who Decides |
+|---------------|--------|-----------------|-------------|
+| **Minor Deviation** | Low impact on functionality/architecture | Record + assess + possibly create follow-up task | AI can decide |
+| **Major Deviation** | Affects core functionality/architecture | **STOP** all tasks + communicate with user | User **MUST** decide |
+| **Reasonable Deviation** | Improvement with sufficient reason | Document + update design + confirm with user | User confirms |
 
 **Minor Deviation** (doesn't affect core functionality and architecture):
-- Record deviation reason and impact
-- Assess whether adjustment needed
-- If adjustment needed, create follow-up task
+- ✅ Record deviation reason and impact
+- ✅ Assess whether adjustment needed
+- ✅ If adjustment needed, create follow-up task
 
 **Major Deviation** (affects core functionality or architecture):
-- Immediately stop subsequent tasks
-- Communicate deviation situation with user
-- Determine whether to correct implementation or update requirements/design
-- Re-verify after correction
+- ❌ **IMMEDIATELY STOP** all subsequent tasks
+- ❌ Communicate deviation situation with user
+- ❌ User determines whether to correct implementation or update requirements/design
+- ✅ Re-verify after correction
 
 **Reasonable Deviation** (improvement with sufficient reason):
-- Record deviation reason and benefits
-- Update design document (if needed)
-- Confirm changes with user
-- Assess impact on subsequent tasks
+- ✅ Record deviation reason and benefits
+- ✅ Update design document (if needed)
+- ✅ **MUST** confirm changes with user
+- ✅ Assess impact on subsequent tasks
+
+---
 
 #### 4. Self-check Prompt
 
-Use following prompt for self-check:
+**MANDATORY**: Use following prompt for self-check after **EVERY** task:
 
 > "Please check whether just completed task implementation meets corresponding requirement (requirement number: X.X), whether it follows architecture and technical solution in design document. If deviation exists, please explain reason."
 
-**Check Process**:
-1. Find task-related requirement number
-2. Open requirements document, locate corresponding requirement
-3. Check each requirement acceptance criterion is met
-4. Open design document, find related design chapter
-5. Check whether implementation conforms to design specification
-6. Record check results and found problems
+**Check Process (Step-by-Step)**:
+1. ✓ Find task-related requirement number from `_Requirements:_` tag
+2. ✓ Open requirements document (`.kiro/features/{feature-id}/spec.md`)
+3. ✓ Locate corresponding requirement
+4. ✓ Check **EACH** requirement acceptance criterion is met
+5. ✓ Open design document (`.kiro/features/{feature-id}/plan.md`)
+6. ✓ Find related design chapter
+7. ✓ Check whether implementation conforms to design specification
+8. ✓ Record check results and found problems
+
+**If any check fails**: **MUST** document and address before proceeding to next task.
 
 ## Progressive Development Implementation Steps
 

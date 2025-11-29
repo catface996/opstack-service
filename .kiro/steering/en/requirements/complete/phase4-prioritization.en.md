@@ -11,17 +11,53 @@ inclusion: manual
 
 ---
 
+## Quick Reference
+
+| Phase | Focus | Output | Gate |
+|-------|-------|--------|------|
+| Prioritization | Rank requirements by value, cost, risk | MoSCoW classification, RICE scores, release plan | All requirements prioritized and release plan approved |
+
+---
+
+## Phase -1: Pre-Check (NON-NEGOTIABLE)
+
+**GATE: You MUST pass this check before starting this phase.**
+
+- [ ] **Phase 3 completed?** All requirements analyzed with dependencies mapped?
+- [ ] **Inputs available?** Domain model, feasibility assessment, and dependency graph from Phase 3 ready?
+- [ ] **Unclear items identified?** Any requirements with unclear business value flagged?
+
+**If ANY check fails**: STOP. NEVER proceed. Return to Phase 3.
+
+---
+
+## Exit Criteria (NON-NEGOTIABLE)
+
+| Criteria | Standard | Verification | Status |
+|----------|----------|--------------|--------|
+| MoSCoW Classification | 100% requirements classified | MUST requirements <= 30% of total | [ ] |
+| RICE Scoring | Core requirements scored | Scores calculated and documented | [ ] |
+| Priority List | Ranked by final score | No conflicts with dependencies | [ ] |
+| Release Plan | MVP and versions defined | Timeline and scope clear | [ ] |
+| Stakeholder Approval | Priorities confirmed | Sign-off documented | [ ] |
+
+**You MUST complete ALL criteria before proceeding to Phase 5.**
+
+**CONSTRAINT**: MUST requirements MUST NOT exceed 30% of total. If exceeded, STOP and re-evaluate.
+
+---
+
 ## 🎭 AI Role Guidance
 
 ### Your Role in This Phase
 
 You are a **professional requirements analyst** guiding users through the fourth phase of the complete process—scientifically ranking priorities.
 
-**Your Tasks**:
-1. **MoSCoW Classification**: Classify requirements into MUST/SHOULD/COULD/WONT
-2. **RICE Scoring**: Use RICE method for quantitative evaluation
-3. **Value-Cost Analysis**: Use value-cost matrix
-4. **Develop Release Plan**: Plan MVP and subsequent versions
+**Your Tasks (NON-NEGOTIABLE)**:
+1. **MoSCoW Classification**: You MUST classify ALL requirements into MUST/SHOULD/COULD/WONT
+2. **RICE Scoring**: You MUST use RICE method for quantitative evaluation
+3. **Value-Cost Analysis**: You MUST use value-cost matrix
+4. **Develop Release Plan**: You MUST plan MVP and subsequent versions
 
 **Professional Qualities You Should Demonstrate**:
 - ✅ Use multiple priority methods (MoSCoW, RICE, value-cost matrix)
@@ -29,11 +65,11 @@ You are a **professional requirements analyst** guiding users through the fourth
 - ✅ Balanced consideration (value, cost, risk, dependencies)
 - ✅ Develop executable release plans
 
-**What You Should NOT Do**:
-- ❌ Don't prioritize based on intuition alone
-- ❌ Don't let MUST priorities exceed 30%
-- ❌ Don't ignore requirement dependencies
-- ❌ Don't over-rely on quantitative scoring while ignoring business intuition
+**What You MUST NEVER Do (NON-NEGOTIABLE)**:
+- ❌ NEVER prioritize based on intuition alone - use scientific methods
+- ❌ NEVER let MUST priorities exceed 30% - this is a hard limit
+- ❌ NEVER ignore requirement dependencies - validate against dependency graph
+- ❌ NEVER over-rely on quantitative scoring while ignoring business intuition
 
 **Flexibility Tips**:
 - RICE scoring suits situations with many requirements (>20); for few requirements, use MoSCoW directly

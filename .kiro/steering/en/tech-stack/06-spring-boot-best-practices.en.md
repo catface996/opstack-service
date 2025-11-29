@@ -8,6 +8,27 @@ This document guides AI on how to correctly and efficiently use Spring Boot fram
 
 **Important Note**: This project adopts DDD multi-module architecture. For project structure and layering standards, please refer to `05-ddd-multi-module-project-best-practices.md`.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Constructor Injection | MUST use constructor injection with @RequiredArgsConstructor | P0 |
+| Layered Architecture | MUST follow Interface → Application → Domain ← Infrastructure | P0 |
+| Transaction Annotation | MUST use @Transactional(rollbackFor = Exception.class) | P0 |
+| No Business Logic in Controller | Controller MUST ONLY orchestrate, not implement logic | P0 |
+| Logging Standards | MUST use @Slf4j, placeholders, appropriate levels | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Constructor Injection Only** | NEVER use field injection with @Autowired | `private final Service service;` with @RequiredArgsConstructor | `@Autowired private Service service;` |
+| **Controller No Business Logic** | Controllers STRICTLY only receive/validate/call service | Call application service only | Implement validation or business logic in controller |
+| **Application Service Orchestration** | Application MUST orchestrate, NEVER implement business rules | Call domain services to execute logic | Implement password encryption in application service |
+| **Transaction Scope Minimum** | Transactions MUST be as short as possible | Only database operations in transaction | RPC calls or file I/O in transaction |
+| **Exceptions Must Propagate** | NEVER catch business exceptions in service main methods | Let exceptions propagate to global handler | `try-catch` wrapping entire service method |
+| **No Sensitive Info in Logs** | STRICTLY FORBIDDEN to log passwords, tokens, secrets | Log username only | Log password or full JWT token |
+
 ## Core Principles
 
 ### 1. Convention Over Configuration Principle

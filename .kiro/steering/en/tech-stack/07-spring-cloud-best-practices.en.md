@@ -6,6 +6,27 @@ inclusion: manual
 
 This document guides AI on how to correctly and efficiently use Spring Cloud to build microservice architecture.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Service Registration | MUST use Nacos for service discovery | P0 |
+| Circuit Breaking | MUST implement circuit breaker for all remote calls | P0 |
+| Configuration Center | MUST use Nacos Config for centralized configuration | P0 |
+| No Direct IP Calls | NEVER use IP addresses, MUST use service names | P0 |
+| Timeout Control | MUST set timeout for all remote calls | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Service Name Only** | STRICTLY use service names, NEVER IP addresses | `http://user-service/api/users` | `http://192.168.1.10:8080/api/users` |
+| **Circuit Breaker Mandatory** | ALL remote calls MUST have circuit breaker | @FeignClient with fallback | FeignClient without fallback |
+| **No Over-Decomposition** | Services MUST be decomposed by business domain | Reasonable service granularity | One service per database table |
+| **Distributed Transaction Avoidance** | STRICTLY minimize distributed transactions | Use eventual consistency | Frequent cross-service transactions |
+| **Timeout Must Be Set** | ALL remote calls MUST have explicit timeout | Feign timeout configured | Default timeout (infinite wait) |
+| **Distributed Tracing Required** | MUST integrate Sleuth + Zipkin for tracing | TraceId in all logs | No tracing, impossible to debug |
+
 ## Core Principles
 
 ### 1. Service Decomposition Principles

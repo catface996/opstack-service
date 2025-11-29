@@ -6,6 +6,27 @@ inclusion: manual
 
 This document guides AI on how to properly write Application Layer (Application Service Layer) code in DDD architecture, ensuring code clarity, maintainability, and adherence to the Single Responsibility Principle.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Method Steps | Main method MUST have 5-10 clear numbered steps | P0 |
+| No Conditionals in Main | NEVER have if/else or try/catch in main method | P0 |
+| Encapsulate Validation | ALL validation logic MUST be in private methods | P0 |
+| Encapsulate Conversion | ALL model conversion MUST be in private methods | P0 |
+| Main Method Length | Main method MUST NOT exceed 20 lines | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **5-10 Steps Only** | Main method MUST contain only 5-10 numbered steps | Clear step comments `// 1. Validate` | 30+ lines with mixed logic |
+| **Zero if/else in Main** | Main method STRICTLY FORBIDDEN to have if/else | Extract to `validateUsername()` | `if (exists) { throw ... }` in main |
+| **Zero try/catch in Main** | Main method MUST NOT catch exceptions | Let exceptions propagate | `try { ... } catch (Exception e)` wrapping main logic |
+| **No Inline Conversion** | NEVER have 5+ lines of field mapping in main | `return buildResult(account)` | 10 lines of `result.setXxx()` in main |
+| **Single Responsibility Methods** | Each private method MUST do ONE thing only | `validateAccountUniqueness()` | `validateAndCreateAccount()` |
+| **Method Naming Clarity** | Method names MUST describe exact action | `logRegistrationSuccess()` | `process()` or `handle()` |
+
 ## Core Principles
 
 ### 1. Orchestration Principle

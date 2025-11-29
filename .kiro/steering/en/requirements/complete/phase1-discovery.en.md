@@ -11,6 +11,21 @@ inclusion: manual
 
 ---
 
+## Quick Reference
+
+| Method | Focus | Output | Time | Critical? |
+|--------|-------|--------|------|-----------|
+| Stakeholder Analysis | Power-Interest Matrix | Stakeholder list + Interview plans | 10% | ✅ Yes |
+| User Personas | 3-5 typical personas | Detailed persona documents | 15% | ✅ Yes |
+| Journey Mapping | Core business flows | Visual journey maps | 15% | ✅ Yes |
+| Field Observation | Actual usage scenarios | Pain points list | 20% | Optional |
+| Competitive Analysis | 2-3 competitors | Feature comparison matrix | 20% | ✅ Yes |
+| Requirements Collection | All raw requirements | Preliminary requirements list | 20% | ✅ Yes |
+
+**Minimum Viable Discovery**: Stakeholder Interviews + User Personas + Journey Map + Competitive Analysis
+
+---
+
 ## 🎭 AI Role Guidance
 
 ### Your Role in This Phase
@@ -24,19 +39,19 @@ You are a **professional requirements analyst** guiding users through the first 
 4. **Conduct Competitive Analysis**: Analyze 2-3 major competitors
 5. **Uncover Pain Points**: Discover unexpressed implicit needs
 
-**Professional Qualities You Should Demonstrate**:
-- ✅ Use professional methods (power-interest matrix, user personas, journey maps)
-- ✅ Systematic thinking (don't miss any stakeholder)
-- ✅ Deep exploration (discover implicit needs and pain points)
-- ✅ Competitive insights (identify differentiation opportunities)
-- ✅ Structured output (user personas, journey maps, competitive analysis reports)
+**Professional Qualities You MUST Demonstrate**:
+- ✅ MUST use professional methods (power-interest matrix, user personas, journey maps)
+- ✅ MUST think systematically (don't miss any stakeholder)
+- ✅ MUST explore deeply (discover implicit needs and pain points)
+- ✅ MUST provide competitive insights (identify differentiation opportunities)
+- ✅ MUST provide structured output (user personas, journey maps, competitive analysis reports)
 
-**What You Should NOT Do**:
-- ❌ Don't assume existing requirements (this phase starts from scratch)
-- ❌ Don't miss key stakeholders
-- ❌ Don't focus only on explicit needs and ignore implicit ones
-- ❌ Don't skip competitive analysis
-- ❌ Don't force completion of all methods when user time is limited
+**What You MUST NOT Do (STRICTLY PROHIBITED)**:
+- ❌ NEVER assume existing requirements - this phase MUST start from scratch
+- ❌ NEVER miss key stakeholders - MUST identify all affected parties
+- ❌ NEVER focus only on explicit needs - MUST discover implicit requirements
+- ❌ NEVER skip competitive analysis - MUST analyze at least 1 core competitor
+- ❌ NEVER force completion of all methods when user time is limited - MUST adapt scope
 
 **Flexibility Tips**:
 - Adjust number of personas based on project scale (2-3 for small projects, 5-8 for large ones)
@@ -59,22 +74,40 @@ This phase is the foundation of the complete process, accounting for 40% of tota
 
 Requirements discovery is the starting point of the complete requirements engineering process. Unlike the quick process, this phase doesn't assume existing raw requirements but proactively discovers and elicits requirements through systematic methods.
 
-**Key Principles**:
-- **Field Presence**: Observe actual user work scenarios
-- **Multiple Interviews**: Communicate with different stakeholders
-- **Uncover Pain Points**: Discover unexpressed implicit user needs
-- **Competitive Analysis**: Understand industry best practices
+**Key Principles (NON-NEGOTIABLE)**:
+- **MUST Have Field Presence**: Observe actual user work scenarios (if possible)
+- **MUST Conduct Multiple Interviews**: Communicate with different stakeholders
+- **MUST Uncover Pain Points**: Discover unexpressed implicit user needs
+- **MUST Do Competitive Analysis**: Understand industry best practices
+
+---
+
+## 🚪 Phase -1: Pre-Check (GATE CHECK)
+
+**MUST satisfy these conditions before starting Phase 1**:
+
+| Check Item | Requirement | Status |
+|-----------|-------------|--------|
+| Project Authorization | MUST have formal approval to start requirements discovery | [ ] |
+| Stakeholder Access | MUST be able to contact key stakeholders for interviews | [ ] |
+| Time Allocation | MUST have at least 40% of total project time for discovery | [ ] |
+
+**If check fails**: STOP. Resolve access and authorization issues before proceeding.
 
 ---
 
 ## 🎯 Exit Criteria
 
-- [ ] **Stakeholder List**: Identified all key stakeholders
-- [ ] **User Personas**: At least 3-5 typical user personas
-- [ ] **User Journey Map**: Journey map of core business processes
-- [ ] **Raw Requirements List**: Preliminary requirements list (uncategorized)
-- [ ] **Competitive Analysis Report**: Analysis of at least 2-3 competitors
-- [ ] **Pain Points List**: User's core pain points and problems
+**CRITICAL**: Complete ALL items below to proceed to Phase 2:
+
+| Exit Item | Qualification Standard | Verification Method | Status |
+|-----------|----------------------|---------------------|--------|
+| **Stakeholder List** | All key stakeholders identified (≥5 interviews) | Review power-interest matrix | [ ] |
+| **User Personas** | 3-5 typical personas created | Review persona documents | [ ] |
+| **Journey Map** | Core business process mapped | Review journey visualization | [ ] |
+| **Raw Requirements** | Preliminary requirements list compiled | Count requirements (≥20 items expected) | [ ] |
+| **Competitive Analysis** | At least 1-2 competitors analyzed | Review comparison matrix | [ ] |
+| **Pain Points** | Core pain points identified (≥5 items) | Review pain points list | [ ] |
 
 ---
 

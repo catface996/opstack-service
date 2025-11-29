@@ -6,6 +6,27 @@ inclusion: manual
 
 This document details best practices for exception design, inheritance hierarchy, and handling in Java/Spring Boot applications.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Use ErrorCode Enums | MUST use type-safe ErrorCode enums, NEVER string constants | P0 |
+| Exception Inheritance | MUST follow BaseException → BusinessException/SystemException hierarchy | P0 |
+| Preserve Exception Chain | MUST pass original exception as cause | P0 |
+| Infrastructure Conversion | Infrastructure MUST catch and convert third-party exceptions | P0 |
+| Global Handler Only | NEVER catch exceptions in service layer, use global handler | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **ErrorCode Enum Mandatory** | STRICTLY use ErrorCode enums, NO string constants | `throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS)` | `throw new BusinessException("AUTH_001", "Invalid")` |
+| **Inheritance Hierarchy Required** | ALL exceptions MUST extend BaseException properly | BusinessException extends BaseException | Each exception directly extends RuntimeException |
+| **No Multi-Exception Catch** | NEVER use pipe operator for exception handling | Catch parent class: `catch (BusinessException e)` | `catch (ExceptionA \| ExceptionB \| ExceptionC e)` |
+| **Infrastructure Must Convert** | Infrastructure layer MUST convert third-party exceptions | Catch JwtException, throw BusinessException | Let ExpiredJwtException propagate to controller |
+| **Preserve Cause Chain** | ALWAYS pass original exception to preserve stack trace | `throw new SystemException(code, cause)` | `throw new SystemException(code)` losing original |
+| **No Service Layer Catch** | Application/Domain services MUST NOT catch business exceptions | Let exceptions propagate naturally | `try-catch` in service main method |
+
 ## Core Principles
 
 ### 1. Exception Inheritance Hierarchy Principle

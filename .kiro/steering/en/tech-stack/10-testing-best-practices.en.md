@@ -4,6 +4,27 @@ inclusion: manual
 
 # Testing Best Practices
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Testing Pyramid | MUST follow 70% Unit, 20% Integration, 10% E2E | P0 |
+| Test Isolation | MUST ensure tests are independent and repeatable | P0 |
+| Naming Convention | MUST follow should_ExpectedResult_when_Condition | P0 |
+| Mock External Dependencies | MUST mock all external dependencies in unit tests | P0 |
+| TestContainers for Integration | MUST use TestContainers for integration tests | P1 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Testing Pyramid Ratio** | STRICTLY maintain 70% unit, 20% integration, 10% E2E | Focus on unit tests for business logic | Only integration/E2E tests |
+| **Test Independence** | Tests MUST run in any order without side effects | Each test creates unique data | Tests depend on execution order |
+| **Mock All External Deps** | Unit tests MUST mock databases, APIs, Redis, MQ | Use @Mock for all dependencies | Connect to real database in unit test |
+| **TestContainers for DB Tests** | Integration tests MUST use TestContainers, NOT shared DB | Start temporary MySQL container | Connect to shared dev database |
+| **Naming Convention Mandatory** | ALL test methods MUST follow naming pattern | `should_ReturnUser_when_ValidId()` | `testGetUser()` or `test1()` |
+| **AAA Pattern Required** | ALL tests MUST follow Arrange-Act-Assert structure | Clear 3-section structure | Mixed setup and assertions |
+
 ## 1. Testing Strategy Layers
 
 ### 1.1 Testing Pyramid

@@ -1,8 +1,19 @@
 # AIOps Service - 项目结构说明
 
+## 快速参考
+
+| 层级 | 模块 | 职责 | MUST NOT |
+|------|------|------|----------|
+| Interface | interface-http | 处理 HTTP 请求 | ❌ 业务逻辑 |
+| Application | application-impl | 用例编排、事务 | ❌ 直接调用 Repository |
+| Domain | domain-impl | 核心业务逻辑 | ❌ 控制事务 |
+| Infrastructure | mysql-impl | 数据持久化 | ❌ 业务逻辑 |
+
+---
+
 ## 项目概览
 
-AIOps Service 采用 Maven 多模块项目结构，严格遵循 DDD（领域驱动设计）分层架构和六边形架构原则。
+AIOps Service 采用 Maven 多模块项目结构，**STRICTLY** 遵循 DDD（领域驱动设计）分层架构和六边形架构原则。
 
 ## 目录结构
 
@@ -223,6 +234,19 @@ aiops-service/
 ```
 
 ## 模块说明
+
+### 模块职责矩阵 (NON-NEGOTIABLE)
+
+| 模块 | 职责 | ✅ MUST | ❌ NEVER |
+|------|------|---------|----------|
+| **common** | 通用基础设施 | 异常、工具类、常量 | 业务逻辑 |
+| **bootstrap** | 应用启动 | 配置、启动类 | 业务代码 |
+| **interface-http** | HTTP 请求 | Controller、DTO | 业务逻辑 |
+| **application-impl** | 用例编排 | 事务、编排 | 直接调用 Repository |
+| **domain-impl** | 核心业务 | 业务规则、领域服务 | 控制事务 |
+| **mysql-impl** | 数据持久化 | Repository 实现 | 业务逻辑 |
+
+---
 
 ### 1. common（通用模块）
 
@@ -492,17 +516,19 @@ bootstrap
         └─> security-api
 ```
 
-## 数据对象转换
+## 数据对象转换 (NON-NEGOTIABLE)
+
+**MUST 严格遵守对象转换规则，NEVER 跨层使用错误的对象类型：**
 
 ### 对象类型
 
-| 对象类型 | 位置 | 说明 |
-|---------|------|------|
-| **Request/Response** | interface-http | HTTP 请求/响应对象 |
-| **Command/Query** | application-api | 应用层内部 DTO |
-| **Entity** | domain-api | 领域对象（聚合根、实体、值对象） |
-| **Entity** | repository-api | 仓储层的领域对象（与 domain-api 一致） |
-| **PO** | mysql-impl | 持久化对象（数据库表映射） |
+| 对象类型 | 位置 | 说明 | 可见层级 |
+|---------|------|------|----------|
+| **Request/Response** | interface-http | HTTP 请求/响应对象 | ✅ Interface 层 |
+| **Command/Query** | application-api | 应用层内部 DTO | ✅ Application 层 |
+| **Entity** | domain-api | 领域对象（聚合根、实体、值对象） | ✅ Domain 层 |
+| **Entity** | repository-api | 仓储层的领域对象 | ✅ Repository 层 |
+| **PO** | mysql-impl | 持久化对象（数据库表映射） | ✅ Infrastructure 层 |
 
 ### 转换链路
 
@@ -552,24 +578,26 @@ com.catface996.aiops.domain.agent    # Agent 域
 com.catface996.aiops.domain.llm      # LLM 域
 ```
 
-## 文件命名规范
+## 文件命名规范 (NON-NEGOTIABLE)
+
+**MUST 遵守命名规范，NEVER 使用不一致的命名风格：**
 
 ### Java 类命名
 
-| 类型 | 命名规范 | 示例 |
-|------|---------|------|
-| Controller | XxxController | AuthController |
-| Application Service | XxxApplicationService | AuthApplicationService |
-| Domain Service | XxxDomainService | AuthDomainService |
-| Repository | XxxRepository | AccountRepository |
-| Cache Service | XxxCacheService | LoginFailureCacheService |
-| MQ Service | XxxMqService | AuthEventMqService |
-| Entity | 名词 | Account, Session |
-| PO | XxxPO | AccountPO, SessionPO |
-| Request | XxxRequest | LoginRequest |
-| Response | XxxResponse | LoginResponse |
-| Command | XxxCommand | LoginCommand |
-| Query | XxxQuery | AccountQuery |
+| 类型 | 命名规范 | ✅ 正确示例 | ❌ 错误示例 |
+|------|---------|------------|------------|
+| Controller | XxxController | AuthController | AuthCtrl |
+| Application Service | XxxApplicationService | AuthApplicationService | AuthAppService |
+| Domain Service | XxxDomainService | AuthDomainService | AuthService |
+| Repository | XxxRepository | AccountRepository | AccountRepo |
+| Cache Service | XxxCacheService | LoginFailureCacheService | LoginCache |
+| MQ Service | XxxMqService | AuthEventMqService | AuthMQ |
+| Entity | 名词 | Account, Session | AccountEntity |
+| PO | XxxPO | AccountPO, SessionPO | AccountDO |
+| Request | XxxRequest | LoginRequest | LoginReq |
+| Response | XxxResponse | LoginResponse | LoginResp |
+| Command | XxxCommand | LoginCommand | LoginCmd |
+| Query | XxxQuery | AccountQuery | AccountQry |
 
 ### 配置文件命名
 
@@ -656,9 +684,20 @@ java -jar bootstrap/target/bootstrap-1.0.0-SNAPSHOT.jar \
   --spring.profiles.active=local
 ```
 
-## 开发工作流
+## 开发工作流 (NON-NEGOTIABLE)
+
+**MUST 按照以下顺序开发，NEVER 跳过步骤：**
 
 ### 1. 添加新功能
+
+| 步骤 | 操作 | 模块 | 验证点 |
+|------|------|------|--------|
+| 1 | 定义领域模型和服务接口 | domain-api | ✅ 接口设计合理 |
+| 2 | 实现领域服务 | domain-impl | ✅ 单元测试通过 |
+| 3 | 定义应用服务接口 | application-api | ✅ DTO 设计合理 |
+| 4 | 实现应用服务 | application-impl | ✅ 单元测试通过 |
+| 5 | 添加 Controller | interface-http | ✅ API 文档完整 |
+| 6 | 编写测试 | test | ✅ 覆盖率 > 80% |
 
 1. 在 `domain-api` 中定义领域模型和领域服务接口
 2. 在 `domain-impl` 中实现领域服务

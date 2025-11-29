@@ -6,6 +6,27 @@ inclusion: manual
 
 This document guides AI on how to write high-quality, high-performance, and secure MySQL SQL statements.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Parameterized Queries | MUST use #{}, NEVER ${} or string concatenation | P0 |
+| UPDATE/DELETE WHERE | MUST have WHERE clause | P0 |
+| SELECT Explicit Columns | MUST specify columns, NEVER SELECT * | P0 |
+| Index Usage | MUST avoid function operations on indexed columns | P0 |
+| Batch Operations | MUST use batch for multiple inserts/updates | P1 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **SQL Injection Prevention** | STRICTLY use parameterized queries | `WHERE id = #{id}` | `WHERE id = ${id}` or string concatenation |
+| **UPDATE Must Have WHERE** | UPDATE without WHERE is FORBIDDEN | `UPDATE user SET name = ? WHERE id = ?` | `UPDATE user SET name = ?` |
+| **DELETE Must Have WHERE** | DELETE without WHERE is FORBIDDEN | `DELETE FROM user WHERE id = ?` | `DELETE FROM user` |
+| **No SELECT Star** | NEVER use SELECT * in production code | `SELECT id, name, email FROM user` | `SELECT * FROM user` |
+| **Index Invalidation** | NEVER use functions on indexed columns in WHERE | `WHERE create_time >= '2024-01-01'` | `WHERE DATE(create_time) = '2024-01-01'` |
+| **N+1 Query Prevention** | STRICTLY use JOIN or batch queries | `JOIN` or `WHERE id IN (...)` | Query database in loop |
+
 ## Core Principles
 
 ### 1. Security First Principle

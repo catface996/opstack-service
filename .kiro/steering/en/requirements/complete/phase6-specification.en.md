@@ -11,6 +11,21 @@ inclusion: manual
 
 ---
 
+## Quick Reference
+
+| Deliverable | Format | Purpose | Mandatory? |
+|-------------|--------|---------|------------|
+| PRD Document | Markdown/PDF | Complete product requirements | ✅ Yes |
+| API Specification | OpenAPI YAML | API contract definition | If API-heavy |
+| BDD Scenarios | Gherkin | Executable test scenarios | ✅ Yes |
+| Requirements Baseline | Version controlled | Change management | ✅ Yes |
+| Traceability Matrix | Table | Requirements tracking | ✅ Yes |
+
+**Baseline Establishment Process**:
+1. Requirements Freeze → 2. Formal Review → 3. Stakeholder Approval → 4. Version Release → 5. Change Control
+
+---
+
 ## 🎭 AI Role Guidance
 
 ### Your Role in This Phase
@@ -23,17 +38,17 @@ You are a **professional requirements analyst** guiding users through the final 
 3. **BDD Scenarios**: Write BDD test scenarios
 4. **Requirements Baseline**: Establish formal requirements baseline
 
-**Professional Qualities You Should Demonstrate**:
-- ✅ Use standard PRD templates
-- ✅ Define clear API specifications (OpenAPI format)
-- ✅ Write executable BDD scenarios (Gherkin format)
-- ✅ Establish version control and change management mechanisms
+**Professional Qualities You MUST Demonstrate**:
+- ✅ MUST use standard PRD templates
+- ✅ MUST define clear API specifications (OpenAPI format, if applicable)
+- ✅ MUST write executable BDD scenarios (Gherkin format)
+- ✅ MUST establish version control and change management mechanisms
 
-**What You Should NOT Do**:
-- ❌ Don't use non-standard formats
-- ❌ Don't omit version control
-- ❌ Don't ignore change management processes
-- ❌ Don't over-pursue document perfection while ignoring actual value
+**What You MUST NOT Do (STRICTLY PROHIBITED)**:
+- ❌ NEVER use non-standard formats - MUST follow industry standards
+- ❌ NEVER omit version control - MUST establish baseline
+- ❌ NEVER ignore change management processes - MUST define change procedures
+- ❌ NEVER over-pursue document perfection while ignoring actual value - MUST balance quality and pragmatism
 
 **Flexibility Tips**:
 - API specifications are only required in API-intensive projects; other projects can simplify or defer
@@ -49,21 +64,41 @@ This phase is the wrap-up of the complete process. After establishing requiremen
 
 Requirements specification is organizing all requirements into unified, standardized documentation as the baseline for subsequent design and development.
 
-**Key Principles**:
-- **Unified Format**: Use standard templates
-- **Version Control**: Establish version management mechanisms
-- **Traceability**: Maintain requirements traceability relationships
-- **Easy Maintenance**: Facilitate subsequent updates
+**Key Principles (NON-NEGOTIABLE)**:
+- **MUST Use Unified Format**: Use standard templates
+- **MUST Establish Version Control**: Establish version management mechanisms
+- **MUST Maintain Traceability**: Maintain requirements traceability relationships
+- **MUST Enable Easy Maintenance**: Facilitate subsequent updates
+
+---
+
+## 🚪 Phase -1: Pre-Check (GATE CHECK)
+
+**MUST satisfy these conditions before starting Phase 6**:
+
+| Check Item | Requirement | Status |
+|-----------|-------------|--------|
+| Phase 5 Complete | ALL Phase 5 validation criteria MUST be satisfied | [ ] |
+| All Requirements Validated | MUST have validated and approved requirements | [ ] |
+| Stakeholder Alignment | MUST have stakeholder consensus on requirements | [ ] |
+
+**If check fails**: STOP. Return to Phase 5 and complete validation.
 
 ---
 
 ## 🎯 Exit Criteria
 
-- [ ] **PRD Document**: Completed Product Requirements Document
-- [ ] **API Specification**: Completed API design document (if applicable)
-- [ ] **BDD Scenarios**: Written BDD test scenarios
-- [ ] **Requirements Baseline**: Established requirements baseline
-- [ ] **Version Control**: Under version management
+**CRITICAL**: Complete ALL items below to finish the complete process:
+
+| Exit Item | Qualification Standard | Verification Method | Status |
+|-----------|----------------------|---------------------|--------|
+| **PRD Document** | Complete Product Requirements Document | Review PRD completeness checklist | [ ] |
+| **API Specification** | API design document completed (if applicable) | Validate OpenAPI format | [ ] |
+| **BDD Scenarios** | BDD test scenarios written | Review Gherkin syntax | [ ] |
+| **Requirements Baseline** | Baseline established with version number | Confirm baseline approval | [ ] |
+| **Version Control** | Documentation under version management | Verify Git repository | [ ] |
+| **Traceability Matrix** | Complete traceability mapping | Review all requirements tracked | [ ] |
+| **Stakeholder Sign-off** | Formal written approval obtained | Collect signatures | [ ] |
 
 ---
 

@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档指导 AI 如何在基于 DDD（领域驱动设计）的多模块 Maven 项目中正确地组织代码、命名和管理依赖。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 | 说明 |
+|------|------|--------|------|
+| 严格依赖方向 | MUST Interface→Application→Domain←Infrastructure | P0 | 防止循环依赖 |
+| Application层禁止直接访问Repository | MUST 只能调用Domain Service | P0 | 保持层次清晰 |
+| Domain层使用业务语言 | MUST 不使用技术后缀(Entity/DTO) | P0 | DDD核心原则 |
+| Entity/PO分离 | MUST Entity在api,PO在impl | P0 | 框架无关 |
+| Repository-API位置 | MUST 作为domain子模块 | P0 | 遵循依赖倒置 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | 正确示例 | 错误示例 |
+|------|------|----------|----------|
+| **Application禁止依赖Repository-API** | Application只调用Domain Service | application-impl依赖domain-api | application-impl依赖repository-api |
+| **Domain使用纯业务语言** | 领域实体不用技术后缀 | `User`, `Order` (domain层) | `UserEntity`, `OrderEntity` (domain层) |
+| **Entity在api,PO在impl** | 分离框架依赖 | UserEntity(repository-api无注解), UserPO(mysql-impl有注解) | Entity和PO都在impl |
+| **Repository-API是domain子模块** | 遵循依赖倒置原则 | domain/repository-api/ | infrastructure/repository-api/ |
+| **依赖方向严格单向** | 下层不能依赖上层 | Domain不依赖Application | Domain调用Application Service |
+
 ## 核心原则
 
 ### 1. 严格分层原则

@@ -6,6 +6,26 @@ inclusion: manual
 
 本文档指导 AI 如何在 DDD 架构中正确编写 Application 层（应用服务层）代码，确保代码清晰、可维护、符合单一职责原则。
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 |
+|------|------|--------|
+| 方法步骤 | MUST 主方法包含 5-10 个清晰步骤 | P0 |
+| 条件判断 | NEVER 在主方法中使用 if/else | P0 |
+| 异常处理 | NEVER 在主方法中使用 try/catch | P0 |
+| 职责封装 | MUST 将验证/转换/日志封装到私有方法 | P0 |
+| 方法长度 | MUST 主方法不超过 20 行 | P1 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | ✅ 正确 | ❌ 错误 |
+|------|------|---------|---------|
+| **清晰步骤** | 主方法 5-10 步，每步一个方法调用 | `// 1. 验证\nvalidateUsername(request);` | 主方法包含 30+ 行详细逻辑 |
+| **无 if/else** | 条件判断封装到私有方法 | `validateAccountNotLocked(username);` | `if (lockInfo.isPresent()) { throw... }` |
+| **无 try/catch** | 异常自然传播到全局处理器 | 直接调用业务方法 | `try { service.xxx() } catch { log... }` |
+| **职责分离** | 验证/转换/日志提取到私有方法 | `logRegistrationSuccess(account);` | 在主方法中写 10 行日志代码 |
+| **方法命名** | 使用 validate/create/build/convertTo/log 前缀 | `validatePasswordStrength()` | `process()` 或 `handle()` |
+
 ## 核心原则
 
 ### 1. 流程编排原则

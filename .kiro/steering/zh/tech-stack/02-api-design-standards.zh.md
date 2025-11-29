@@ -4,6 +4,26 @@ inclusion: manual
 
 # API 设计标准
 
+## 快速参考
+
+| 规则 | 要求 | 优先级 | 说明 |
+|------|------|--------|------|
+| HTTP API使用OpenAPI | MUST 使用OpenAPI 3.0规范 | P0 | 行业标准，支持工具化 |
+| 分页从1开始 | MUST 使用1-based分页 | P0 | 符合用户直觉 |
+| 统一错误响应 | MUST 包含code/message/details | P0 | 前端统一处理 |
+| 接口仅定义签名 | MUST 不包含实现逻辑 | P0 | 设计与实现分离 |
+| 设计技术无关 | MUST 使用标准格式 | P1 | 便于协作和演进 |
+
+## 关键规则 (NON-NEGOTIABLE)
+
+| 规则 | 描述 | 正确示例 | 错误示例 |
+|------|------|----------|----------|
+| **HTTP API必须用OpenAPI** | 设计阶段使用OpenAPI 3.0规范，不用代码片段 | 提供完整的openapi.yaml文件 | 用Java/Python代码示例表达API |
+| **分页页码从1开始** | page=1表示第一页，与用户直觉一致 | `GET /users?page=1&size=10` | `GET /users?page=0&size=10` |
+| **内部接口仅签名** | 接口定义只包含方法签名和注释，无实现 | `LoginResult login(LoginRequest);` | 包含业务逻辑的方法体 |
+| **统一错误响应格式** | 所有API返回统一结构 | `{code,message,details,timestamp,path}` | 各API使用不同错误格式 |
+| **API定义独立文件** | API规范放在api/目录，设计文档引用 | `api/openapi.yaml` + 文档引用 | 在plan.md中嵌入完整API定义 |
+
 ## 核心原则
 
 设计阶段的 API 定义应该使用**行业标准格式**，而不是具体的代码实现。
@@ -77,6 +97,78 @@ GraphQL API 的设计应该使用 GraphQL Schema Definition Language (SDL)。
 
 **❌ 错误做法**：包含实现逻辑
 
+## 分页设计
+
+### 页码从 1 开始（1-based）
+
+所有分页 API **必须**采用 **1-based** 分页，即第一页的页码为 `page=1`。
+
+**为什么采用 1-based**：
+
+| 维度 | 1-based (推荐) | 0-based |
+|------|---------------|---------|
+| **用户直觉** | ✅ "第一页"传 1，符合自然语言 | ❌ "第一页"传 0，反直觉 |
+| **沟通成本** | ✅ 产品说"第3页"，开发传 page=3 | ❌ 需要心算 -1 |
+| **URL 可读性** | ✅ `/users?page=1` 直观 | ❌ `/users?page=0` 奇怪 |
+| **与 UI 一致** | ✅ 页码显示与参数一致 | ❌ 显示"第1页"但传 0 |
+| **MyBatis-Plus** | ✅ 原生支持 | ❌ 需要 +1 转换 |
+
+**✅ 正确做法**：
+
+```java
+// Controller 层：页码从 1 开始，默认值为 1
+@GetMapping("/users")
+public ResponseEntity<PageResult<UserDTO>> getUsers(
+        @RequestParam(defaultValue = "1") int page,   // 从 1 开始
+        @RequestParam(defaultValue = "10") int size) {
+    // ...
+}
+
+// 调用示例
+// GET /api/v1/users?page=1&size=10  → 第一页
+// GET /api/v1/users?page=2&size=10  → 第二页
+```
+
+**❌ 错误做法**：
+
+```java
+// 不要使用 0-based 分页
+@RequestParam(defaultValue = "0") int page  // 错误：从 0 开始
+```
+
+### 分页参数命名规范
+
+| 参数名 | 含义 | 默认值 | 说明 |
+|-------|------|-------|------|
+| `page` | 页码 | 1 | 从 1 开始，表示第几页 |
+| `size` | 每页大小 | 10 | 单页返回的记录数 |
+
+### 分页响应格式
+
+分页响应应包含以下字段：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "content": [...],        // 当前页数据列表
+    "page": 1,               // 当前页码（从 1 开始）
+    "size": 10,              // 每页大小
+    "totalElements": 100,    // 总记录数
+    "totalPages": 10,        // 总页数
+    "first": true,           // 是否第一页
+    "last": false            // 是否最后一页
+  }
+}
+```
+
+### 边界处理
+
+- `page < 1`：返回第一页数据，或返回 400 错误
+- `page > totalPages`：返回空列表
+- `size` 应设置上限（如最大 100），防止一次查询过多数据
+
 ## 错误码设计
 
 ### 统一的错误响应格式
@@ -127,6 +219,8 @@ API 定义文件应该独立于设计文档，按类型组织：
 - [ ] 错误码定义完整
 - [ ] API 定义文件已放在正确的目录
 - [ ] 设计文档中正确引用了 API 定义文件
+- [ ] 分页 API 采用 1-based 分页（page 从 1 开始）
+- [ ] 分页响应包含完整的分页信息（page、size、totalElements、totalPages）
 
 ## 总结
 

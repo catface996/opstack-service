@@ -6,6 +6,27 @@ inclusion: manual
 
 This document guides AI on how to correctly organize code, naming, and manage dependencies in DDD (Domain-Driven Design) based multi-module Maven projects.
 
+## Quick Reference
+
+| Rule | Requirement | Priority |
+|------|-------------|----------|
+| Dependency Direction | MUST follow Interface → Application → Domain ← Infrastructure | P0 |
+| Application Cannot Depend on Repository | Application MUST ONLY depend on domain-api | P0 |
+| Domain Uses Business Language | Domain entities MUST NOT have technical suffixes | P0 |
+| Entity/PO Separation | Entity in repository-api, PO in mysql-impl | P0 |
+| Domain-Model First | Domain-model MUST be first submodule, API modules depend on it | P0 |
+
+## Critical Rules (NON-NEGOTIABLE)
+
+| Rule | Description | ✅ Correct | ❌ Wrong |
+|------|-------------|------------|----------|
+| **Application Layer Isolation** | Application STRICTLY depends on domain-api ONLY | application-impl depends on domain-api | application-impl depends on repository-api/cache-api/mq-api |
+| **Domain Service as Gateway** | ALL data access MUST go through Domain Service | Application calls Domain Service calls Repository | Application calls Repository directly |
+| **Business Language in Domain** | Domain layer MUST use pure business terms | `User`, `Order` (no suffix) | `UserEntity`, `OrderEntity` in Domain |
+| **Entity/PO Strict Separation** | Entity MUST be framework-free in repository-api | Entity is pure POJO | Entity has @TableName annotations |
+| **Port Interfaces in Domain** | Repository/Cache/MQ APIs MUST be domain submodules | domain/repository-api | infrastructure/repository-api |
+| **No Circular Dependencies** | STRICTLY FORBIDDEN circular module dependencies | Clear one-way dependency graph | Module A depends on B and B depends on A |
+
 ## Core Principles
 
 ### 1. Strict Layering Principle
