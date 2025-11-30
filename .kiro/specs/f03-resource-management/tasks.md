@@ -97,12 +97,26 @@
       - ResourceAuditLogRepositoryImpl.java
     - 构建验证通过：mvn clean compile BUILD SUCCESS
 
-- [ ] 4. 实现AES-256加密服务
+- [x] 4. 实现AES-256加密服务 ✅
   - 实现EncryptionService接口和AesEncryptionServiceImpl
   - 支持encrypt()和decrypt()方法
   - 配置加密密钥和IV
   - **验证方法**: 【单元测试】测试加密解密功能，验证加密后可正确解密
   - _需求: REQ-FR-004, REQ-FR-014, REQ-NFR-008_
+  - **验证结果**: 2025-11-30 ✅
+    - 接口已创建：EncryptionService.java（encrypt/decrypt/isEncrypted方法）
+    - 实现已创建：AesEncryptionServiceImpl.java
+      - 使用 AES-256-GCM 模式（认证加密）
+      - 随机IV保证相同明文每次加密结果不同
+      - 加密数据以"ENC:"前缀标识
+      - 支持Base64编码密钥或原始字符串密钥
+    - 单元测试：14个测试用例全部通过
+      - 加密解密正确性验证 ✓
+      - 空字符串/null处理 ✓
+      - JSON数据加密解密 ✓
+      - 特殊字符处理 ✓
+      - 长文本加密解密 ✓
+      - 加密数据检测 ✓
 
 - [ ] 5. 实现权限验证切面
   - 实现@RequireOwnerPermission注解
