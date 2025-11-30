@@ -34,6 +34,25 @@ public enum ResourceErrorCode implements ErrorCode {
      */
     EMAIL_CONFLICT("CONFLICT_002", "邮箱已存在"),
 
+    // ==================== 认证授权 (401/403) ====================
+
+    /**
+     * 未认证
+     */
+    UNAUTHORIZED("AUTH_001", "用户未认证，请先登录"),
+
+    /**
+     * 禁止访问
+     */
+    FORBIDDEN("AUTH_002", "您没有权限执行此操作"),
+
+    // ==================== 参数错误 (400) ====================
+
+    /**
+     * 无效参数
+     */
+    INVALID_PARAMETER("PARAM_001", "请求参数无效"),
+
     // ==================== 资源锁定 (423) ====================
 
     /**
@@ -41,7 +60,14 @@ public enum ResourceErrorCode implements ErrorCode {
      *
      * <p>消息模板：账号已锁定，请在{0}分钟后重试</p>
      */
-    ACCOUNT_LOCKED("LOCKED_001", "账号已锁定，请在{0}分钟后重试");
+    ACCOUNT_LOCKED("LOCKED_001", "账号已锁定，请在{0}分钟后重试"),
+
+    // ==================== 乐观锁冲突 (409) ====================
+
+    /**
+     * 资源版本冲突（乐观锁）
+     */
+    VERSION_CONFLICT("CONFLICT_003", "资源已被其他用户修改，请刷新后重试");
 
     private final String code;
     private final String message;

@@ -118,12 +118,23 @@
       - 长文本加密解密 ✓
       - 加密数据检测 ✓
 
-- [ ] 5. 实现权限验证切面
+- [x] 5. 实现权限验证切面 ✅
   - 实现@RequireOwnerPermission注解
   - 实现ResourcePermissionAspect切面
   - 实现权限检查逻辑
   - **验证方法**: 【运行时验证】非Owner用户尝试编辑资源，验证返回403错误
   - _需求: REQ-FR-011, REQ-FR-012, REQ-FR-016, REQ-NFR-009_
+  - **验证结果**: 2025-11-30 ✅
+    - 注解已创建：@RequireOwnerPermission
+      - resourceIdParam: 指定资源ID参数名
+      - allowAdmin: 是否允许管理员跳过权限检查
+    - 切面已创建：ResourcePermissionAspect
+      - 从SecurityContext获取当前用户
+      - 从方法参数提取资源ID
+      - 查询资源验证所有者权限
+      - 支持管理员角色跳过检查
+    - 错误码已添加：UNAUTHORIZED、FORBIDDEN、INVALID_PARAMETER、VERSION_CONFLICT
+    - 构建验证通过：mvn clean compile BUILD SUCCESS
 
 - [ ] 6. 实现Redis缓存服务
   - 实现ResourceCacheService接口和实现类
