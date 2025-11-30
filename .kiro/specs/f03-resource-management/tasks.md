@@ -270,12 +270,25 @@
       - 完整的Swagger/OpenAPI文档注解
     - 构建验证通过：mvn clean compile BUILD SUCCESS
 
-- [ ] 11. 实现全局异常处理
+- [x] 11. 实现全局异常处理 ✅
   - 定义业务异常类（ResourceNotFoundException等）
   - 实现GlobalExceptionHandler处理各种异常
   - 返回统一的错误响应格式
   - **验证方法**: 【运行时验证】触发业务异常，验证返回统一错误格式
   - _需求: 所有功能性需求_
+  - **验证结果**: 2025-11-30 ✅
+    - GlobalExceptionHandler 已存在，支持根据错误码动态返回HTTP状态码
+    - 新增资源相关错误码到 ResourceErrorCode：
+      - RESOURCE_TYPE_NOT_FOUND: 资源类型不存在 (404)
+      - RESOURCE_NAME_CONFLICT: 资源名称已存在 (409)
+      - RESOURCE_NAME_MISMATCH: 资源名称确认不匹配 (409)
+    - 更新 ResourceDomainServiceImpl 使用 BusinessException：
+      - 资源不存在 → RESOURCE_NOT_FOUND (404)
+      - 资源类型不存在 → RESOURCE_TYPE_NOT_FOUND (404)
+      - 资源名称冲突 → RESOURCE_NAME_CONFLICT (409)
+      - 版本冲突 → VERSION_CONFLICT (409)
+      - 名称确认不匹配 → RESOURCE_NAME_MISMATCH (409)
+    - 构建验证通过：mvn clean compile BUILD SUCCESS
 
 - [ ] 12. 完善配置和监控
   - 配置多环境（local, dev, test, prod）

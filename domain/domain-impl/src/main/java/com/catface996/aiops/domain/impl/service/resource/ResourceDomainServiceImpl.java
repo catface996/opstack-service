@@ -1,5 +1,7 @@
 package com.catface996.aiops.domain.impl.service.resource;
 
+import com.catface996.aiops.common.enums.ResourceErrorCode;
+import com.catface996.aiops.common.exception.BusinessException;
 import com.catface996.aiops.domain.model.resource.OperationType;
 import com.catface996.aiops.domain.model.resource.Resource;
 import com.catface996.aiops.domain.model.resource.ResourceAuditLog;
@@ -90,12 +92,12 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         // 2. 验证资源类型存在
         if (!resourceTypeRepository.existsById(resourceTypeId)) {
-            throw new RuntimeException("资源类型不存在，typeId: " + resourceTypeId);
+            throw new BusinessException(ResourceErrorCode.RESOURCE_TYPE_NOT_FOUND);
         }
 
         // 3. 验证资源名称在同类型下唯一
         if (resourceRepository.existsByNameAndTypeId(name.trim(), resourceTypeId)) {
-            throw new RuntimeException("同类型下资源名称已存在，name: " + name);
+            throw new BusinessException(ResourceErrorCode.RESOURCE_NAME_CONFLICT);
         }
 
         // 4. 加密敏感配置
@@ -212,20 +214,20 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         // 1. 验证资源存在
         Resource resource = resourceRepository.findById(resourceId)
-                .orElseThrow(() -> new RuntimeException("资源不存在，resourceId: " + resourceId));
+                .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND));
 
         // 2. 保存旧值用于审计
         String oldValue = toJson(resource);
 
         // 3. 验证版本号（乐观锁）
         if (version != null && !version.equals(resource.getVersion())) {
-            throw new RuntimeException("资源版本冲突，请刷新后重试");
+            throw new BusinessException(ResourceErrorCode.VERSION_CONFLICT);
         }
 
         // 4. 如果更改了名称，验证新名称在同类型下唯一
         if (name != null && !name.equals(resource.getName())) {
             if (resourceRepository.existsByNameAndTypeId(name, resource.getResourceTypeId())) {
-                throw new RuntimeException("同类型下资源名称已存在，name: " + name);
+                throw new BusinessException(ResourceErrorCode.RESOURCE_NAME_CONFLICT);
             }
         }
 
@@ -238,7 +240,7 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         boolean updated = resourceRepository.update(resource);
         if (!updated) {
-            throw new RuntimeException("资源更新失败，可能存在版本冲突");
+            throw new BusinessException(ResourceErrorCode.VERSION_CONFLICT);
         }
 
         logger.info("资源更新成功，resourceId: {}", resourceId);
@@ -262,11 +264,11 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         // 1. 验证资源存在
         Resource resource = resourceRepository.findById(resourceId)
-                .orElseThrow(() -> new RuntimeException("资源不存在，resourceId: " + resourceId));
+                .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND));
 
         // 2. 验证资源名称确认
         if (confirmName == null || !confirmName.equals(resource.getName())) {
-            throw new RuntimeException("资源名称确认不匹配");
+            throw new BusinessException(ResourceErrorCode.RESOURCE_NAME_MISMATCH);
         }
 
         // 3. 保存旧值用于审计
@@ -295,7 +297,7 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         // 1. 验证资源存在
         Resource resource = resourceRepository.findById(resourceId)
-                .orElseThrow(() -> new RuntimeException("资源不存在，resourceId: " + resourceId));
+                .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND));
 
         // 2. 保存旧状态
         ResourceStatus oldStatus = resource.getStatus();
@@ -303,7 +305,7 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
         // 3. 更新状态
         boolean updated = resourceRepository.updateStatus(resourceId, newStatus, version);
         if (!updated) {
-            throw new RuntimeException("资源状态更新失败，可能存在版本冲突");
+            throw new BusinessException(ResourceErrorCode.VERSION_CONFLICT);
         }
 
         logger.info("资源状态更新成功，resourceId: {}, {} -> {}", resourceId, oldStatus, newStatus);

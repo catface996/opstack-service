@@ -22,6 +22,11 @@ public enum ResourceErrorCode implements ErrorCode {
      */
     RESOURCE_NOT_FOUND("NOT_FOUND_002", "资源不存在"),
 
+    /**
+     * 资源类型不存在
+     */
+    RESOURCE_TYPE_NOT_FOUND("NOT_FOUND_003", "资源类型不存在"),
+
     // ==================== 资源冲突 (409) ====================
 
     /**
@@ -33,6 +38,16 @@ public enum ResourceErrorCode implements ErrorCode {
      * 邮箱已存在
      */
     EMAIL_CONFLICT("CONFLICT_002", "邮箱已存在"),
+
+    /**
+     * 资源名称已存在
+     */
+    RESOURCE_NAME_CONFLICT("CONFLICT_004", "同类型下资源名称已存在"),
+
+    /**
+     * 资源名称确认不匹配
+     */
+    RESOURCE_NAME_MISMATCH("CONFLICT_005", "资源名称确认不匹配"),
 
     // ==================== 认证授权 (401/403) ====================
 
