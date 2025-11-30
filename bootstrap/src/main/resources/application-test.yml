@@ -60,3 +60,10 @@ security:
     max-failed-attempts: ${MAX_FAILED_ATTEMPTS:5}
     # 账号锁定时长 (单位: 秒，30分钟 = 1800秒)
     lock-duration: ${LOCK_DURATION:1800}
+
+# AIOps 配置
+aiops:
+  security:
+    encryption:
+      # AES-256 加密密钥 (32字节，测试环境使用环境变量)
+      key: ${ENCRYPTION_KEY:testEncryptionKey1234567890abcde}

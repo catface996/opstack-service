@@ -80,3 +80,10 @@ security:
     max-failed-attempts: 5
     # 账号锁定时长 (单位: 秒，30分钟 = 1800秒)
     lock-duration: 1800
+
+# AIOps 配置
+aiops:
+  security:
+    encryption:
+      # AES-256 加密密钥 (32字节，本地开发环境使用固定密钥)
+      key: localDevEncryptionKey1234567890ab
