@@ -57,9 +57,9 @@ public enum ResourceErrorCode implements ErrorCode {
     UNAUTHORIZED("AUTH_001", "用户未认证，请先登录"),
 
     /**
-     * 禁止访问
+     * 禁止访问（已认证但无权限）
      */
-    FORBIDDEN("AUTH_002", "您没有权限执行此操作"),
+    FORBIDDEN("AUTHZ_001", "您没有权限执行此操作"),
 
     // ==================== 参数错误 (400) ====================
 
