@@ -39,7 +39,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/llm-services")
 @RequiredArgsConstructor
-@Tag(name = "LLM 服务管理", description = "LLM 服务配置管理接口")
+@Tag(name = "LLM 服务管理", description = "LLM 服务配置管理接口：服务配置 CRUD、启用/禁用、设置默认服务、优先级管理")
 public class LlmServiceController {
 
     private final LlmServiceApplicationService llmServiceApplicationService;

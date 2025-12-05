@@ -70,7 +70,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
-@Tag(name = "管理员功能", description = "管理员专用的账号管理接口")
+@Tag(name = "管理员功能", description = "管理员专用接口：账号解锁、账号查询、系统配置管理")
 @SecurityRequirement(name = "Bearer Authentication")
 public class AdminController {
 

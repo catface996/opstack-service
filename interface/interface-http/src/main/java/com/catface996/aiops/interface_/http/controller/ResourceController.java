@@ -58,7 +58,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@Tag(name = "资源管理", description = "IT资源管理接口：创建、查询、更新、删除、状态管理")
+@Tag(name = "资源管理", description = "IT资源管理接口：创建、查询、更新、删除、状态管理、审计日志")
 public class ResourceController {
 
     private final ResourceApplicationService resourceApplicationService;
