@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.catface996.aiops.repository.mysql.mapper.subgraph.SubgraphPermissionMapper">
+
+    <!-- 根据子图ID查询所有权限记录 -->
+    <select id="selectBySubgraphId" resultType="com.catface996.aiops.repository.mysql.po.subgraph.SubgraphPermissionPO">
+        SELECT id, subgraph_id, user_id, role, granted_at, granted_by
+        FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId}
+        ORDER BY granted_at ASC
+    </select>
+
+    <!-- 根据子图ID和用户ID查询权限记录 -->
+    <select id="selectBySubgraphIdAndUserId" resultType="com.catface996.aiops.repository.mysql.po.subgraph.SubgraphPermissionPO">
+        SELECT id, subgraph_id, user_id, role, granted_at, granted_by
+        FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId} AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <!-- 统计子图的Owner数量 -->
+    <select id="countOwnersBySubgraphId" resultType="int">
+        SELECT COUNT(*)
+        FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId} AND role = 'OWNER'
+    </select>
+
+    <!-- 删除权限记录 -->
+    <delete id="deleteBySubgraphIdAndUserId">
+        DELETE FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId} AND user_id = #{userId}
+    </delete>
+
+    <!-- 检查用户是否有指定角色的权限 -->
+    <select id="hasPermission" resultType="int">
+        SELECT COUNT(1)
+        FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId}
+          AND user_id = #{userId}
+          AND role = #{role}
+        LIMIT 1
+    </select>
+
+    <!-- 检查用户是否有任何权限 -->
+    <select id="hasAnyPermission" resultType="int">
+        SELECT COUNT(1)
+        FROM subgraph_permission
+        WHERE subgraph_id = #{subgraphId} AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+</mapper>
