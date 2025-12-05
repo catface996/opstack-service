@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # AIOps Service - 产品说明
 
 ## 快速参考
@@ -351,7 +355,6 @@ AIOps Service 是一个基于 AI 的智能运维平台，通过整合 IT 资源�
 
 - **技术栈说明**: [tech.md](./tech.md)
 - **项目结构说明**: [structure.md](./structure.md)
-- **架构指南**: [ARCHITECTURE_GUIDELINES.md](./ARCHITECTURE_GUIDELINES.md)
 - **功能特性列表**: [doc/1-intent/2-features/README.md](./doc/1-intent/2-features/README.md)
 
 ---

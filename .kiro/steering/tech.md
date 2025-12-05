@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # AIOps Service - 技术栈说明
 
 ## 快速参考
@@ -450,9 +454,6 @@ spec:
 
 - **产品说明**: [product.md](./product.md)
 - **项目结构说明**: [structure.md](./structure.md)
-- **架构指南**: [ARCHITECTURE_GUIDELINES.md](./ARCHITECTURE_GUIDELINES.md)
-- **快速开始**: [README.md](./README.md)
-
 ---
 
 **创建日期**: 2024-11-27  

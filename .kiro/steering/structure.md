@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # AIOps Service - 项目结构说明
 
 ## 快速参考
@@ -761,8 +765,6 @@ java -jar bootstrap/target/bootstrap-1.0.0-SNAPSHOT.jar \
 
 - **产品说明**: [product.md](./product.md)
 - **技术栈说明**: [tech.md](./tech.md)
-- **架构指南**: [ARCHITECTURE_GUIDELINES.md](./ARCHITECTURE_GUIDELINES.md)
-- **快速开始**: [README.md](./README.md)
 
 ---
 
