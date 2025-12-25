@@ -6,6 +6,8 @@ import com.catface996.aiops.application.api.dto.resource.ResourceDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceTypeDTO;
 import com.catface996.aiops.application.api.dto.resource.request.CreateResourceRequest;
 import com.catface996.aiops.application.api.dto.resource.request.DeleteResourceRequest;
+import com.catface996.aiops.application.api.dto.resource.request.GetResourceAuditLogsRequest;
+import com.catface996.aiops.application.api.dto.resource.request.GetResourceRequest;
 import com.catface996.aiops.application.api.dto.resource.request.ListResourcesRequest;
 import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceRequest;
 import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceStatusRequest;
@@ -35,16 +37,16 @@ import java.util.List;
  *
  * <p>提供IT资源管理相关的HTTP接口。</p>
  *
- * <p>接口列表：</p>
+ * <p>接口列表（统一POST方式）：</p>
  * <ul>
- *   <li>POST /api/v1/resources - 创建资源</li>
- *   <li>GET /api/v1/resources - 查询资源列表</li>
- *   <li>GET /api/v1/resources/{id} - 查询资源详情</li>
- *   <li>PUT /api/v1/resources/{id} - 更新资源</li>
- *   <li>DELETE /api/v1/resources/{id} - 删除资源</li>
- *   <li>PATCH /api/v1/resources/{id}/status - 更新资源状态</li>
- *   <li>GET /api/v1/resources/{id}/audit-logs - 查询审计日志</li>
- *   <li>GET /api/v1/resource-types - 查询资源类型列表</li>
+ *   <li>POST /api/v1/resources/create - 创建资源</li>
+ *   <li>POST /api/v1/resources/list - 查询资源列表</li>
+ *   <li>POST /api/v1/resources/detail - 查询资源详情</li>
+ *   <li>POST /api/v1/resources/update - 更新资源</li>
+ *   <li>POST /api/v1/resources/delete - 删除资源</li>
+ *   <li>POST /api/v1/resources/update-status - 更新资源状态</li>
+ *   <li>POST /api/v1/resources/audit-logs - 查询审计日志</li>
+ *   <li>POST /api/v1/resource-types/list - 查询资源类型列表</li>
  * </ul>
  *
  * <p>需求追溯：</p>
@@ -67,7 +69,7 @@ public class ResourceController {
     /**
      * 创建资源
      */
-    @PostMapping("/resources")
+    @PostMapping("/resources/create")
     @Operation(summary = "创建资源", description = "创建新的IT资源，敏感配置将自动加密存储")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -93,7 +95,7 @@ public class ResourceController {
     /**
      * 查询资源列表
      */
-    @GetMapping("/resources")
+    @PostMapping("/resources/list")
     @Operation(summary = "查询资源列表", description = "分页查询资源列表，支持按类型、状态、关键词过滤")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -101,18 +103,7 @@ public class ResourceController {
             @ApiResponse(responseCode = "401", description = "未认证")
     })
     public ResponseEntity<Result<PageResult<ResourceDTO>>> listResources(
-            @Parameter(description = "资源类型ID") @RequestParam(required = false) Long resourceTypeId,
-            @Parameter(description = "资源状态") @RequestParam(required = false) String status,
-            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
-            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
-
-        ListResourcesRequest request = new ListResourcesRequest();
-        request.setResourceTypeId(resourceTypeId);
-        request.setStatus(status);
-        request.setKeyword(keyword);
-        request.setPage(page);
-        request.setSize(size);
+            @Valid @RequestBody ListResourcesRequest request) {
 
         PageResult<ResourceDTO> result = resourceApplicationService.listResources(request);
 
@@ -122,7 +113,7 @@ public class ResourceController {
     /**
      * 查询资源详情
      */
-    @GetMapping("/resources/{id}")
+    @PostMapping("/resources/detail")
     @Operation(summary = "查询资源详情", description = "根据ID查询资源详细信息")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -131,9 +122,9 @@ public class ResourceController {
             @ApiResponse(responseCode = "404", description = "资源不存在")
     })
     public ResponseEntity<Result<ResourceDTO>> getResourceById(
-            @Parameter(description = "资源ID", required = true) @PathVariable Long id) {
+            @Valid @RequestBody GetResourceRequest request) {
 
-        ResourceDTO resource = resourceApplicationService.getResourceById(id);
+        ResourceDTO resource = resourceApplicationService.getResourceById(request.getId());
 
         if (resource == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -146,7 +137,7 @@ public class ResourceController {
     /**
      * 更新资源
      */
-    @PutMapping("/resources/{id}")
+    @PostMapping("/resources/update")
     @Operation(summary = "更新资源", description = "更新资源信息，需要Owner或Admin权限")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -158,20 +149,19 @@ public class ResourceController {
             @ApiResponse(responseCode = "409", description = "版本冲突")
     })
     public ResponseEntity<Result<ResourceDTO>> updateResource(
-            @Parameter(description = "资源ID", required = true) @PathVariable Long id,
             @Valid @RequestBody UpdateResourceRequest request) {
-        log.info("更新资源请求，resourceId: {}", id);
+        log.info("更新资源请求，resourceId: {}", request.getId());
 
         Long operatorId = getCurrentUserId();
         String operatorName = getCurrentUsername();
 
         // 权限检查
-        if (!resourceApplicationService.checkPermission(id, operatorId, isAdmin())) {
+        if (!resourceApplicationService.checkPermission(request.getId(), operatorId, isAdmin())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Result.error(403001, "无权限操作此资源"));
         }
 
-        ResourceDTO resource = resourceApplicationService.updateResource(id, request, operatorId, operatorName);
+        ResourceDTO resource = resourceApplicationService.updateResource(request.getId(), request, operatorId, operatorName);
 
         return ResponseEntity.ok(Result.success("资源更新成功", resource));
     }
@@ -179,7 +169,7 @@ public class ResourceController {
     /**
      * 删除资源
      */
-    @DeleteMapping("/resources/{id}")
+    @PostMapping("/resources/delete")
     @Operation(summary = "删除资源", description = "删除资源，需要输入资源名称确认")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -190,20 +180,19 @@ public class ResourceController {
             @ApiResponse(responseCode = "404", description = "资源不存在")
     })
     public ResponseEntity<Result<Void>> deleteResource(
-            @Parameter(description = "资源ID", required = true) @PathVariable Long id,
             @Valid @RequestBody DeleteResourceRequest request) {
-        log.info("删除资源请求，resourceId: {}", id);
+        log.info("删除资源请求，resourceId: {}", request.getId());
 
         Long operatorId = getCurrentUserId();
         String operatorName = getCurrentUsername();
 
         // 权限检查
-        if (!resourceApplicationService.checkPermission(id, operatorId, isAdmin())) {
+        if (!resourceApplicationService.checkPermission(request.getId(), operatorId, isAdmin())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Result.error(403001, "无权限操作此资源"));
         }
 
-        resourceApplicationService.deleteResource(id, request, operatorId, operatorName);
+        resourceApplicationService.deleteResource(request.getId(), request, operatorId, operatorName);
 
         return ResponseEntity.ok(Result.success("资源删除成功", null));
     }
@@ -211,7 +200,7 @@ public class ResourceController {
     /**
      * 更新资源状态
      */
-    @PatchMapping("/resources/{id}/status")
+    @PostMapping("/resources/update-status")
     @Operation(summary = "更新资源状态", description = "更新资源状态（RUNNING/STOPPED/MAINTENANCE/OFFLINE）")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -222,14 +211,13 @@ public class ResourceController {
             @ApiResponse(responseCode = "409", description = "版本冲突")
     })
     public ResponseEntity<Result<ResourceDTO>> updateResourceStatus(
-            @Parameter(description = "资源ID", required = true) @PathVariable Long id,
             @Valid @RequestBody UpdateResourceStatusRequest request) {
-        log.info("更新资源状态请求，resourceId: {}, newStatus: {}", id, request.getStatus());
+        log.info("更新资源状态请求，resourceId: {}, newStatus: {}", request.getId(), request.getStatus());
 
         Long operatorId = getCurrentUserId();
         String operatorName = getCurrentUsername();
 
-        ResourceDTO resource = resourceApplicationService.updateResourceStatus(id, request, operatorId, operatorName);
+        ResourceDTO resource = resourceApplicationService.updateResourceStatus(request.getId(), request, operatorId, operatorName);
 
         return ResponseEntity.ok(Result.success("资源状态更新成功", resource));
     }
@@ -237,7 +225,7 @@ public class ResourceController {
     /**
      * 查询资源审计日志
      */
-    @GetMapping("/resources/{id}/audit-logs")
+    @PostMapping("/resources/audit-logs")
     @Operation(summary = "查询审计日志", description = "查询资源的操作审计日志")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -246,11 +234,10 @@ public class ResourceController {
             @ApiResponse(responseCode = "404", description = "资源不存在")
     })
     public ResponseEntity<Result<PageResult<ResourceAuditLogDTO>>> getResourceAuditLogs(
-            @Parameter(description = "资源ID", required = true) @PathVariable Long id,
-            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
+            @Valid @RequestBody GetResourceAuditLogsRequest request) {
 
-        PageResult<ResourceAuditLogDTO> result = resourceApplicationService.getResourceAuditLogs(id, page, size);
+        PageResult<ResourceAuditLogDTO> result = resourceApplicationService.getResourceAuditLogs(
+                request.getId(), request.getPage(), request.getSize());
 
         return ResponseEntity.ok(Result.success(result));
     }
@@ -258,7 +245,7 @@ public class ResourceController {
     /**
      * 查询资源类型列表
      */
-    @GetMapping("/resource-types")
+    @PostMapping("/resource-types/list")
     @Operation(summary = "查询资源类型列表", description = "获取所有可用的资源类型")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {

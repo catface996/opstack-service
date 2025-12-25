@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2025-11-21
 
 ## Active Technologies
+- Java 21 (LTS) + Spring Boot 3.4.1, Spring Web MVC, OpenAPI 3 (springdoc) (001-resource-post-api)
+- N/A (本次变更不涉及存储层) (001-resource-post-api)
 
 - Java 21 (LTS) (001-init-ddd-architecture)
 
@@ -43,6 +45,7 @@ mvn test
 Java 21 (LTS): Follow standard conventions
 
 ## Recent Changes
+- 001-resource-post-api: Added Java 21 (LTS) + Spring Boot 3.4.1, Spring Web MVC, OpenAPI 3 (springdoc)
 
 - 001-init-ddd-architecture: Added Java 21 (LTS)
 

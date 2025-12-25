@@ -2,6 +2,7 @@ package com.catface996.aiops.application.api.dto.resource.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Schema(description = "删除资源请求")
 public class DeleteResourceRequest {
+
+    @Schema(description = "资源ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotNull(message = "资源ID不能为空")
+    private Long id;
 
     @Schema(description = "确认的资源名称（必须与资源名称完全匹配）",
             example = "web-server-01", requiredMode = Schema.RequiredMode.REQUIRED)
