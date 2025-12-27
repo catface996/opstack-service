@@ -1,17 +1,14 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 0.0.0 → 1.0.0 (Initial ratification)
+Version change: 1.0.0 → 1.1.0 (MINOR: Added Pagination Protocol principle)
 
-Modified principles: N/A (Initial version)
+Modified principles: None
 
 Added sections:
-- Core Principles (5 principles)
-- API Design Standards
-- Development Workflow
-- Governance
+- VI. Pagination Protocol (新增分页协议规范)
 
-Removed sections: N/A
+Removed sections: None
 
 Templates requiring updates:
 - /.specify/templates/plan-template.md: ✅ No updates required (generic)
@@ -82,6 +79,53 @@ Follow-up TODOs: None
 - **MyBatis-Plus**: 3.5.x
 - **MySQL**: 8.0
 - **SpringDoc OpenAPI**: 用于 API 文档生成
+
+### VI. Pagination Protocol
+
+所有分页接口 MUST 遵循统一的分页协议：
+
+#### 分页请求参数
+
+分页请求 MUST 继承 `PageableRequest` 基类，包含以下标准字段：
+
+```json
+{
+  "page": 1,          // 页码（从 1 开始），默认 1，最小 1
+  "size": 20,         // 每页大小，默认 20，范围 1-100
+  "tenantId": null,   // 租户ID（网关注入，hidden）
+  "traceId": null,    // 追踪ID（网关注入，hidden）
+  "userId": null      // 用户ID（网关注入，hidden）
+}
+```
+
+- `page` MUST 从 1 开始计数，最小值为 1
+- `size` MUST 限制在 1-100 范围内，默认值为 20
+- 网关注入字段（tenantId, traceId, userId）在 Swagger 文档中 MUST 设置为 hidden
+
+#### 分页响应结果
+
+分页响应 MUST 使用 `PageResult<T>` 结构：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "success": true,
+  "data": {
+    "content": [],           // 数据列表
+    "page": 1,               // 当前页码（从1开始）
+    "size": 10,              // 每页大小
+    "totalElements": 100,    // 总记录数
+    "totalPages": 10,        // 总页数
+    "first": true,           // 是否为第一页
+    "last": false            // 是否为最后一页
+  }
+}
+```
+
+- `content` MUST 包含当前页的数据列表
+- `totalPages` MUST 根据 `totalElements` 和 `size` 自动计算
+- `first` 和 `last` MUST 正确标识边界状态
 
 ## API Design Standards
 
@@ -154,5 +198,6 @@ mvn test
 - 代码评审 MUST 验证是否符合宪法原则
 - 新功能 MUST 遵循 API URL Convention
 - 数据库变更 MUST 遵循 Database Migration 原则
+- 分页接口 MUST 遵循 Pagination Protocol
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-27 | **Last Amended**: 2025-12-27
+**Version**: 1.1.0 | **Ratified**: 2025-12-27 | **Last Amended**: 2025-12-27
