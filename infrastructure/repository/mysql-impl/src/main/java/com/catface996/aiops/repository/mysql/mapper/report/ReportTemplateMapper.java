@@ -8,6 +8,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /**
  * 报告模板 Mapper 接口
  *
@@ -72,4 +74,18 @@ public interface ReportTemplateMapper extends BaseMapper<ReportTemplatePO> {
             "</script>")
     long countByCondition(@Param("category") String category,
                           @Param("keyword") String keyword);
+
+    /**
+     * 批量查询存在的模板ID
+     *
+     * @param ids 模板ID列表
+     * @return 存在的模板ID列表
+     */
+    @Select("<script>" +
+            "SELECT id FROM report_template WHERE deleted = 0 AND id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<Long> selectExistingIds(@Param("ids") List<Long> ids);
 }
