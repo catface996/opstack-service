@@ -92,4 +92,12 @@ public interface ReportTemplateRepository {
      * @return true if name exists for other template
      */
     boolean existsByNameExcludeId(String name, Long excludeId);
+
+    /**
+     * 批量查询存在的模板ID
+     *
+     * @param ids 模板ID列表
+     * @return 存在的模板ID列表
+     */
+    List<Long> findExistingIds(List<Long> ids);
 }

@@ -14,6 +14,11 @@ import com.catface996.aiops.application.api.dto.topology.request.RemoveMembersRe
 import com.catface996.aiops.application.api.dto.topology.request.UpdateTopologyRequest;
 import com.catface996.aiops.application.api.dto.topology.TopologyGraphDTO;
 import com.catface996.aiops.application.api.service.topology.TopologyApplicationService;
+import com.catface996.aiops.application.api.service.topology.TopologyReportTemplateApplicationService;
+import com.catface996.aiops.interface_.http.request.topology.BindReportTemplatesRequest;
+import com.catface996.aiops.interface_.http.request.topology.QueryBoundTemplatesRequest;
+import com.catface996.aiops.interface_.http.request.topology.QueryUnboundTemplatesRequest;
+import com.catface996.aiops.interface_.http.request.topology.UnbindReportTemplatesRequest;
 import com.catface996.aiops.interface_.http.response.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,7 +28,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,11 +71,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @RequestMapping("/api/service/v1/topologies")
-@RequiredArgsConstructor
-@Tag(name = "拓扑图管理", description = "拓扑图管理接口：创建、查询、更新、删除、成员管理（POST-Only API）")
+@Tag(name = "拓扑图管理", description = "拓扑图管理接口：创建、查询、更新、删除、成员管理、报告模板绑定（POST-Only API）")
 public class TopologyController {
 
     private final TopologyApplicationService topologyApplicationService;
+    private final TopologyReportTemplateApplicationService topologyReportTemplateApplicationService;
+
+    public TopologyController(TopologyApplicationService topologyApplicationService,
+                              TopologyReportTemplateApplicationService topologyReportTemplateApplicationService) {
+        this.topologyApplicationService = topologyApplicationService;
+        this.topologyReportTemplateApplicationService = topologyReportTemplateApplicationService;
+    }
 
     /**
      * 创建拓扑图
@@ -312,6 +322,110 @@ public class TopologyController {
         log.info("获取拓扑图数据，topologyId: {}, depth: {}", request.getTopologyId(), request.getDepth());
 
         TopologyGraphDTO result = topologyApplicationService.getTopologyGraph(request);
+
+        return ResponseEntity.ok(Result.success(result));
+    }
+
+    // ===== 报告模板绑定接口 =====
+
+    /**
+     * 绑定报告模板到拓扑图
+     *
+     * <p>批量绑定报告模板到拓扑图，支持幂等操作（已绑定的跳过）。</p>
+     */
+    @PostMapping("/report-templates/bind")
+    @Operation(summary = "绑定报告模板", description = "批量绑定报告模板到拓扑图，支持幂等操作（已绑定的跳过）")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "绑定成功"),
+            @ApiResponse(responseCode = "400", description = "参数无效或超过批量限制"),
+            @ApiResponse(responseCode = "401", description = "未认证"),
+            @ApiResponse(responseCode = "404", description = "拓扑图或报告模板不存在")
+    })
+    public ResponseEntity<Result<TopologyReportTemplateApplicationService.BindResultDTO>> bindReportTemplates(
+            @Valid @RequestBody BindReportTemplatesRequest request) {
+
+        log.info("绑定报告模板，topologyId: {}, templateIds: {}, operatorId: {}",
+                request.getTopologyId(), request.getReportTemplateIds(), request.getOperatorId());
+
+        TopologyReportTemplateApplicationService.BindResultDTO result =
+                topologyReportTemplateApplicationService.bindReportTemplates(
+                        request.getTopologyId(), request.getReportTemplateIds(), request.getOperatorId());
+
+        return ResponseEntity.ok(Result.success("绑定成功", result));
+    }
+
+    /**
+     * 解绑报告模板
+     *
+     * <p>批量解绑报告模板，支持幂等操作（未绑定的跳过）。</p>
+     */
+    @PostMapping("/report-templates/unbind")
+    @Operation(summary = "解绑报告模板", description = "批量解绑报告模板，支持幂等操作（未绑定的跳过）")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "解绑成功"),
+            @ApiResponse(responseCode = "400", description = "参数无效或超过批量限制"),
+            @ApiResponse(responseCode = "401", description = "未认证"),
+            @ApiResponse(responseCode = "404", description = "拓扑图不存在")
+    })
+    public ResponseEntity<Result<TopologyReportTemplateApplicationService.UnbindResultDTO>> unbindReportTemplates(
+            @Valid @RequestBody UnbindReportTemplatesRequest request) {
+
+        log.info("解绑报告模板，topologyId: {}, templateIds: {}, operatorId: {}",
+                request.getTopologyId(), request.getReportTemplateIds(), request.getOperatorId());
+
+        TopologyReportTemplateApplicationService.UnbindResultDTO result =
+                topologyReportTemplateApplicationService.unbindReportTemplates(
+                        request.getTopologyId(), request.getReportTemplateIds(), request.getOperatorId());
+
+        return ResponseEntity.ok(Result.success("解绑成功", result));
+    }
+
+    /**
+     * 查询已绑定的报告模板
+     *
+     * <p>分页查询拓扑图已绑定的报告模板列表。</p>
+     */
+    @PostMapping("/report-templates/bound")
+    @Operation(summary = "查询已绑定报告模板", description = "分页查询拓扑图已绑定的报告模板列表")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "查询成功"),
+            @ApiResponse(responseCode = "401", description = "未认证")
+    })
+    public ResponseEntity<Result<PageResult<TopologyReportTemplateApplicationService.BoundTemplateDTO>>> queryBoundTemplates(
+            @Valid @RequestBody QueryBoundTemplatesRequest request) {
+
+        log.info("查询已绑定报告模板，topologyId: {}, keyword: {}", request.getTopologyId(), request.getKeyword());
+
+        PageResult<TopologyReportTemplateApplicationService.BoundTemplateDTO> result =
+                topologyReportTemplateApplicationService.queryBoundTemplates(
+                        request.getTopologyId(), request.getKeyword(), request.getPage(), request.getSize());
+
+        return ResponseEntity.ok(Result.success(result));
+    }
+
+    /**
+     * 查询未绑定的报告模板
+     *
+     * <p>分页查询拓扑图未绑定的报告模板列表，用于绑定时选择。</p>
+     */
+    @PostMapping("/report-templates/unbound")
+    @Operation(summary = "查询未绑定报告模板", description = "分页查询拓扑图未绑定的报告模板列表，用于绑定时选择")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "查询成功"),
+            @ApiResponse(responseCode = "401", description = "未认证")
+    })
+    public ResponseEntity<Result<PageResult<TopologyReportTemplateApplicationService.UnboundTemplateDTO>>> queryUnboundTemplates(
+            @Valid @RequestBody QueryUnboundTemplatesRequest request) {
+
+        log.info("查询未绑定报告模板，topologyId: {}, keyword: {}", request.getTopologyId(), request.getKeyword());
+
+        PageResult<TopologyReportTemplateApplicationService.UnboundTemplateDTO> result =
+                topologyReportTemplateApplicationService.queryUnboundTemplates(
+                        request.getTopologyId(), request.getKeyword(), request.getPage(), request.getSize());
 
         return ResponseEntity.ok(Result.success(result));
     }

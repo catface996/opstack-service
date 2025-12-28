@@ -112,6 +112,14 @@ public class ReportTemplateRepositoryImpl implements ReportTemplateRepository {
         return po != null && !po.getId().equals(excludeId);
     }
 
+    @Override
+    public List<Long> findExistingIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return reportTemplateMapper.selectExistingIds(ids);
+    }
+
     // ==================== 转换方法 ====================
 
     private ReportTemplate toDomain(ReportTemplatePO po) {
