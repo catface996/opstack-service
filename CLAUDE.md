@@ -7,6 +7,7 @@ Auto-generated from all feature plans. Last updated: 2025-11-21
 - MySQL 8.0 (via Flyway migrations) (001-remove-llm-service)
 - Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI (026-report-management)
 - MySQL 8.0, Flyway migrations (027-agent-management)
+- MySQL 8.0 (通过 Flyway 迁移) (001-remove-relationship)
 
 - Java 21 (LTS) + Spring Boot 3.4.1, Spring Web MVC, SpringDoc OpenAPI (024-post-only-api)
 - MySQL 8.0 (通过 MyBatis-Plus) (024-post-only-api)
@@ -49,9 +50,9 @@ mvn test
 Java 21 (LTS): Follow standard conventions
 
 ## Recent Changes
+- 001-remove-relationship: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
 - 001-remove-resource-api: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
 - 027-agent-management: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
-- 026-report-management: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
 
 
 <!-- MANUAL ADDITIONS START -->

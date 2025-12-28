@@ -9,8 +9,9 @@ import com.catface996.aiops.common.enums.RelationshipErrorCode;
 import com.catface996.aiops.common.enums.ResourceErrorCode;
 import com.catface996.aiops.common.exception.BusinessException;
 import com.catface996.aiops.domain.model.node.Node;
+import com.catface996.aiops.domain.model.node2node.Node2Node;
 import com.catface996.aiops.domain.model.relationship.*;
-import com.catface996.aiops.domain.service.relationship.RelationshipDomainService;
+import com.catface996.aiops.domain.service.node2node.Node2NodeDomainService;
 import com.catface996.aiops.repository.node.NodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,18 +23,20 @@ import java.util.stream.Collectors;
 /**
  * 资源关系应用服务实现
  *
+ * <p>注意：内部实现已改为使用 Node2NodeDomainService，但 API 保持不变。</p>
+ *
  * @author AI Assistant
  * @since 2025-12-03
  */
 @Service
 public class RelationshipApplicationServiceImpl implements RelationshipApplicationService {
 
-    private final RelationshipDomainService relationshipDomainService;
+    private final Node2NodeDomainService node2NodeDomainService;
     private final NodeRepository nodeRepository;
 
-    public RelationshipApplicationServiceImpl(RelationshipDomainService relationshipDomainService,
+    public RelationshipApplicationServiceImpl(Node2NodeDomainService node2NodeDomainService,
                                                NodeRepository nodeRepository) {
-        this.relationshipDomainService = relationshipDomainService;
+        this.node2NodeDomainService = node2NodeDomainService;
         this.nodeRepository = nodeRepository;
     }
 
@@ -60,7 +63,7 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
             throw new BusinessException(RelationshipErrorCode.INVALID_RELATIONSHIP_STRENGTH, request.getStrength());
         }
 
-        Relationship relationship = relationshipDomainService.createRelationship(
+        Node2Node node2Node = node2NodeDomainService.createRelationship(
                 request.getSourceResourceId(),
                 request.getTargetResourceId(),
                 type,
@@ -70,7 +73,7 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
                 request.getTopologyId(),
                 operatorId);
 
-        return toDTO(relationship);
+        return toDTO(node2Node);
     }
 
     @Override
@@ -80,10 +83,10 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
         RelationshipType type = relationshipType != null ? RelationshipType.valueOf(relationshipType) : null;
         RelationshipStatus statusEnum = status != null ? RelationshipStatus.valueOf(status) : null;
 
-        List<Relationship> relationships = relationshipDomainService.listRelationships(
+        List<Node2Node> relationships = node2NodeDomainService.listRelationships(
                 sourceResourceId, targetResourceId, type, statusEnum, pageNum, pageSize);
 
-        long total = relationshipDomainService.countRelationships(
+        long total = node2NodeDomainService.countRelationships(
                 sourceResourceId, targetResourceId, type, statusEnum);
 
         List<RelationshipDTO> dtos = relationships.stream()
@@ -100,8 +103,8 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
                 .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND, "资源不存在: " + resourceId));
 
         // 获取上游和下游依赖
-        List<Relationship> upstreams = relationshipDomainService.getUpstreamDependencies(resourceId);
-        List<Relationship> downstreams = relationshipDomainService.getDownstreamDependencies(resourceId);
+        List<Node2Node> upstreams = node2NodeDomainService.getUpstreamDependencies(resourceId);
+        List<Node2Node> downstreams = node2NodeDomainService.getDownstreamDependencies(resourceId);
 
         // 转换为DTO
         List<RelationshipDTO> upstreamDTOs = upstreams.stream().map(this::toDTO).collect(Collectors.toList());
@@ -127,9 +130,9 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
 
     @Override
     public RelationshipDTO getRelationshipById(Long relationshipId) {
-        Relationship relationship = relationshipDomainService.getRelationshipById(relationshipId)
+        Node2Node node2Node = node2NodeDomainService.getRelationshipById(relationshipId)
                 .orElseThrow(() -> new BusinessException(RelationshipErrorCode.RELATIONSHIP_NOT_FOUND, relationshipId));
-        return toDTO(relationship);
+        return toDTO(node2Node);
     }
 
     @Override
@@ -143,21 +146,21 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
         RelationshipStatus status = request.getStatus() != null ?
                 RelationshipStatus.valueOf(request.getStatus()) : null;
 
-        Relationship relationship = relationshipDomainService.updateRelationship(
+        Node2Node node2Node = node2NodeDomainService.updateRelationship(
                 relationshipId, type, strength, status, request.getDescription(), operatorId);
 
-        return toDTO(relationship);
+        return toDTO(node2Node);
     }
 
     @Override
     @Transactional
     public void deleteRelationship(Long relationshipId, Long operatorId) {
-        relationshipDomainService.deleteRelationship(relationshipId, operatorId);
+        node2NodeDomainService.deleteRelationship(relationshipId, operatorId);
     }
 
     @Override
     public CycleDetectionDTO detectCycle(Long resourceId) {
-        CycleDetectionResult result = relationshipDomainService.detectCycle(resourceId);
+        CycleDetectionResult result = node2NodeDomainService.detectCycle(resourceId);
 
         return CycleDetectionDTO.builder()
                 .hasCycle(result.hasCycle())
@@ -168,10 +171,10 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
 
     @Override
     public TraverseDTO traverse(Long resourceId, int maxDepth) {
-        TraverseResult result = relationshipDomainService.traverse(resourceId, maxDepth);
+        TraverseResult result = node2NodeDomainService.traverse(resourceId, maxDepth);
 
         List<RelationshipDTO> relationshipDTOs = result.getRelationships().stream()
-                .map(this::toDTO)
+                .map(this::toDTOFromRelationship)
                 .collect(Collectors.toList());
 
         return TraverseDTO.builder()
@@ -184,9 +187,41 @@ public class RelationshipApplicationServiceImpl implements RelationshipApplicati
     }
 
     /**
-     * 将领域对象转换为DTO
+     * 将 Node2Node 领域对象转换为 DTO
      */
-    private RelationshipDTO toDTO(Relationship relationship) {
+    private RelationshipDTO toDTO(Node2Node node2Node) {
+        return RelationshipDTO.builder()
+                .id(node2Node.getId())
+                .sourceResourceId(node2Node.getSourceId())
+                .sourceResourceName(node2Node.getSourceName())
+                .targetResourceId(node2Node.getTargetId())
+                .targetResourceName(node2Node.getTargetName())
+                .relationshipType(node2Node.getRelationshipType() != null ?
+                        node2Node.getRelationshipType().name() : null)
+                .relationshipTypeDesc(node2Node.getRelationshipType() != null ?
+                        node2Node.getRelationshipType().getDescription() : null)
+                .direction(node2Node.getDirection() != null ?
+                        node2Node.getDirection().name() : null)
+                .directionDesc(node2Node.getDirection() != null ?
+                        node2Node.getDirection().getDescription() : null)
+                .strength(node2Node.getStrength() != null ?
+                        node2Node.getStrength().name() : null)
+                .strengthDesc(node2Node.getStrength() != null ?
+                        node2Node.getStrength().getDescription() : null)
+                .status(node2Node.getStatus() != null ?
+                        node2Node.getStatus().name() : null)
+                .statusDesc(node2Node.getStatus() != null ?
+                        node2Node.getStatus().getDescription() : null)
+                .description(node2Node.getDescription())
+                .createdAt(node2Node.getCreatedAt())
+                .updatedAt(node2Node.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * 将 Relationship 领域对象转换为 DTO（用于 TraverseResult 兼容）
+     */
+    private RelationshipDTO toDTOFromRelationship(Relationship relationship) {
         return RelationshipDTO.builder()
                 .id(relationship.getId())
                 .sourceResourceId(relationship.getSourceResourceId())
