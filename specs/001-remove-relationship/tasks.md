@@ -156,7 +156,7 @@
 - [X] T040 执行 `mvn test` 确认所有测试通过
 - [X] T041 启动服务，执行完整 API 测试（参考 quickstart.md 所有端点）
 - [X] T042 检查是否有残留的 Relationship 引用：`grep -r "RelationshipDomainService\|RelationshipRepository\|RelationshipPO" --include="*.java"`
-- [ ] T043 提交代码并推送到远端
+- [X] T043 提交代码并推送到远端
 
 ---
 
