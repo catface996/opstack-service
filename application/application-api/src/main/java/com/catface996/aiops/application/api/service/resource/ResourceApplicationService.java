@@ -1,7 +1,6 @@
 package com.catface996.aiops.application.api.service.resource;
 
 import com.catface996.aiops.application.api.dto.common.PageResult;
-import com.catface996.aiops.application.api.dto.resource.ResourceAuditLogDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceTypeDTO;
 import com.catface996.aiops.application.api.dto.resource.request.CreateResourceRequest;
@@ -95,16 +94,6 @@ public interface ResourceApplicationService {
      */
     ResourceDTO updateResourceStatus(Long resourceId, UpdateResourceStatusRequest request,
                                      Long operatorId, String operatorName);
-
-    /**
-     * 获取资源的审计日志
-     *
-     * @param resourceId 资源ID
-     * @param page 页码（从1开始）
-     * @param size 每页大小
-     * @return 分页结果
-     */
-    PageResult<ResourceAuditLogDTO> getResourceAuditLogs(Long resourceId, int page, int size);
 
     /**
      * 获取所有资源类型

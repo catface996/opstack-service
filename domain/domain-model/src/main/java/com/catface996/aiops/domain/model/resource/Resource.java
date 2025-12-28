@@ -1,8 +1,6 @@
 package com.catface996.aiops.domain.model.resource;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 资源聚合根
@@ -68,11 +66,6 @@ public class Resource {
      * 创建者ID（第一个Owner）
      */
     private Long createdBy;
-
-    /**
-     * 资源标签列表
-     */
-    private List<ResourceTag> tags = new ArrayList<>();
 
     // 构造函数
     public Resource() {
@@ -232,25 +225,6 @@ public class Resource {
         this.version = (this.version == null) ? 1 : this.version + 1;
     }
 
-    /**
-     * 添加标签
-     */
-    public void addTag(ResourceTag tag) {
-        if (this.tags == null) {
-            this.tags = new ArrayList<>();
-        }
-        this.tags.add(tag);
-    }
-
-    /**
-     * 移除标签
-     */
-    public void removeTag(String tagName) {
-        if (this.tags != null) {
-            this.tags.removeIf(tag -> tag.getTagName().equals(tagName));
-        }
-    }
-
     // Getters and Setters
 
     public Long getId() {
@@ -339,14 +313,6 @@ public class Resource {
 
     public void setCreatedBy(Long createdBy) {
         this.createdBy = createdBy;
-    }
-
-    public List<ResourceTag> getTags() {
-        return tags;
-    }
-
-    public void setTags(List<ResourceTag> tags) {
-        this.tags = tags;
     }
 
     @Override

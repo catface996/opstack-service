@@ -5,12 +5,9 @@ import com.catface996.aiops.common.exception.BusinessException;
 import com.catface996.aiops.domain.model.resource.Resource;
 import com.catface996.aiops.domain.model.resource.ResourceStatus;
 import com.catface996.aiops.domain.model.resource.ResourceType;
-import com.catface996.aiops.domain.service.resource.AuditLogService;
-import com.catface996.aiops.domain.service.subgraph.SubgraphMemberDomainService;
 import com.catface996.aiops.infrastructure.cache.api.service.ResourceCacheService;
 import com.catface996.aiops.infrastructure.security.api.service.EncryptionService;
 import com.catface996.aiops.repository.resource.ResourceRepository;
-import com.catface996.aiops.repository.resource.ResourceTagRepository;
 import com.catface996.aiops.repository.resource.ResourceTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,33 +33,24 @@ class ResourceDomainServiceImplTest {
     private ResourceDomainServiceImpl resourceDomainService;
     private ResourceRepository resourceRepository;
     private ResourceTypeRepository resourceTypeRepository;
-    private ResourceTagRepository resourceTagRepository;
     private EncryptionService encryptionService;
     private ResourceCacheService cacheService;
-    private AuditLogService auditLogService;
     private ObjectMapper objectMapper;
-    private SubgraphMemberDomainService subgraphMemberDomainService;
 
     @BeforeEach
     void setUp() {
         resourceRepository = mock(ResourceRepository.class);
         resourceTypeRepository = mock(ResourceTypeRepository.class);
-        resourceTagRepository = mock(ResourceTagRepository.class);
         encryptionService = mock(EncryptionService.class);
         cacheService = mock(ResourceCacheService.class);
-        auditLogService = mock(AuditLogService.class);
         objectMapper = new ObjectMapper();
-        subgraphMemberDomainService = mock(SubgraphMemberDomainService.class);
 
         resourceDomainService = new ResourceDomainServiceImpl(
                 resourceRepository,
                 resourceTypeRepository,
-                resourceTagRepository,
                 encryptionService,
                 cacheService,
-                auditLogService,
-                objectMapper,
-                subgraphMemberDomainService
+                objectMapper
         );
     }
 
@@ -102,8 +90,6 @@ class ResourceDomainServiceImplTest {
             assertEquals(resourceTypeId, result.getResourceTypeId());
             assertEquals(ResourceStatus.RUNNING, result.getStatus());
 
-            // 验证审计日志被记录
-            verify(auditLogService).logCreate(eq(1L), anyString(), eq(operatorId), eq(operatorName));
             // 验证缓存被清除
             verify(cacheService).evictAllResourceLists();
         }
@@ -212,8 +198,6 @@ class ResourceDomainServiceImplTest {
             assertEquals("new-name", result.getName());
             assertEquals("新描述", result.getDescription());
 
-            // 验证审计日志被记录
-            verify(auditLogService).logUpdate(eq(resourceId), anyString(), anyString(), eq(100L), eq("admin"));
             // 验证缓存被清除
             verify(cacheService).evictResource(resourceId);
         }
@@ -266,10 +250,8 @@ class ResourceDomainServiceImplTest {
             resourceDomainService.deleteResource(resourceId, "test-server", 100L, "admin");
 
             // Then
-            verify(resourceTagRepository).deleteByResourceId(resourceId);
             verify(resourceRepository).deleteById(resourceId);
             verify(cacheService).evictResource(resourceId);
-            verify(auditLogService).logDelete(eq(resourceId), anyString(), eq(100L), eq("admin"));
         }
 
         @Test
@@ -311,7 +293,6 @@ class ResourceDomainServiceImplTest {
 
             // Then
             verify(cacheService).evictResource(resourceId);
-            verify(auditLogService).logStatusChange(eq(resourceId), eq("RUNNING"), eq("MAINTENANCE"), eq(100L), eq("admin"));
         }
     }
 

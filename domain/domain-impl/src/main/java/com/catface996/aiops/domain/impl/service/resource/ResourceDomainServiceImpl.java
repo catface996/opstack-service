@@ -2,18 +2,13 @@ package com.catface996.aiops.domain.impl.service.resource;
 
 import com.catface996.aiops.common.enums.ResourceErrorCode;
 import com.catface996.aiops.common.exception.BusinessException;
-import com.catface996.aiops.domain.model.resource.OperationType;
 import com.catface996.aiops.domain.model.resource.Resource;
-import com.catface996.aiops.domain.model.resource.ResourceAuditLog;
 import com.catface996.aiops.domain.model.resource.ResourceStatus;
 import com.catface996.aiops.domain.model.resource.ResourceType;
-import com.catface996.aiops.domain.service.resource.AuditLogService;
 import com.catface996.aiops.domain.service.resource.ResourceDomainService;
-import com.catface996.aiops.domain.service.subgraph.SubgraphMemberDomainService;
 import com.catface996.aiops.infrastructure.cache.api.service.ResourceCacheService;
 import com.catface996.aiops.infrastructure.security.api.service.EncryptionService;
 import com.catface996.aiops.repository.resource.ResourceRepository;
-import com.catface996.aiops.repository.resource.ResourceTagRepository;
 import com.catface996.aiops.repository.resource.ResourceTypeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,30 +51,21 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
     private final ResourceRepository resourceRepository;
     private final ResourceTypeRepository resourceTypeRepository;
-    private final ResourceTagRepository resourceTagRepository;
     private final EncryptionService encryptionService;
     private final ResourceCacheService cacheService;
-    private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
-    private final SubgraphMemberDomainService subgraphMemberDomainService;
 
     public ResourceDomainServiceImpl(
             ResourceRepository resourceRepository,
             ResourceTypeRepository resourceTypeRepository,
-            ResourceTagRepository resourceTagRepository,
             EncryptionService encryptionService,
             ResourceCacheService cacheService,
-            AuditLogService auditLogService,
-            ObjectMapper objectMapper,
-            SubgraphMemberDomainService subgraphMemberDomainService) {
+            ObjectMapper objectMapper) {
         this.resourceRepository = resourceRepository;
         this.resourceTypeRepository = resourceTypeRepository;
-        this.resourceTagRepository = resourceTagRepository;
         this.encryptionService = encryptionService;
         this.cacheService = cacheService;
-        this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
-        this.subgraphMemberDomainService = subgraphMemberDomainService;
     }
 
     @Override
@@ -119,10 +105,6 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         // 7. 清除列表缓存
         cacheService.evictAllResourceLists();
-
-        // 8. 记录创建审计日志
-        String auditValue = toJson(savedResource);
-        auditLogService.logCreate(savedResource.getId(), auditValue, operatorId, operatorName);
 
         return savedResource;
     }
@@ -222,25 +204,22 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
         Resource resource = resourceRepository.findById(resourceId)
                 .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND));
 
-        // 2. 保存旧值用于审计
-        String oldValue = toJson(resource);
-
-        // 3. 验证版本号（乐观锁）
+        // 2. 验证版本号（乐观锁）
         if (version != null && !version.equals(resource.getVersion())) {
             throw new BusinessException(ResourceErrorCode.VERSION_CONFLICT);
         }
 
-        // 4. 如果更改了名称，验证新名称在同类型下唯一
+        // 3. 如果更改了名称，验证新名称在同类型下唯一
         if (name != null && !name.equals(resource.getName())) {
             if (resourceRepository.existsByNameAndTypeId(name, resource.getResourceTypeId())) {
                 throw new BusinessException(ResourceErrorCode.RESOURCE_NAME_CONFLICT);
             }
         }
 
-        // 5. 加密敏感配置
+        // 4. 加密敏感配置
         String encryptedAttributes = encryptAttributes(attributes);
 
-        // 6. 更新资源（MyBatis-Plus @Version 会自动处理版本号递增）
+        // 5. 更新资源（MyBatis-Plus @Version 会自动处理版本号递增）
         resource.update(name, description, encryptedAttributes);
 
         boolean updated = resourceRepository.update(resource);
@@ -250,14 +229,10 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
 
         logger.info("资源更新成功，resourceId: {}", resourceId);
 
-        // 7. 清除缓存
+        // 6. 清除缓存
         cacheService.evictResource(resourceId);
 
-        // 8. 记录更新审计日志
-        String newValue = toJson(resource);
-        auditLogService.logUpdate(resourceId, oldValue, newValue, operatorId, operatorName);
-
-        // 9. 解密后返回
+        // 7. 解密后返回
         decryptResourceAttributes(resource);
         return resource;
     }
@@ -276,28 +251,12 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
             throw new BusinessException(ResourceErrorCode.RESOURCE_NAME_MISMATCH);
         }
 
-        // 3. 如果是子图类型，验证子图为空
-        if (isSubgraphType(resource)) {
-            if (!subgraphMemberDomainService.isSubgraphEmpty(resourceId)) {
-                throw new BusinessException(ResourceErrorCode.SUBGRAPH_NOT_EMPTY);
-            }
-        }
-
-        // 4. 保存旧值用于审计
-        String oldValue = toJson(resource);
-
-        // 4. 删除资源标签
-        resourceTagRepository.deleteByResourceId(resourceId);
-
-        // 5. 删除资源
+        // 3. 删除资源
         resourceRepository.deleteById(resourceId);
         logger.info("资源删除成功，resourceId: {}", resourceId);
 
-        // 6. 清除缓存
+        // 4. 清除缓存
         cacheService.evictResource(resourceId);
-
-        // 7. 记录删除审计日志
-        auditLogService.logDelete(resourceId, oldValue, operatorId, operatorName);
     }
 
     @Override
@@ -325,13 +284,7 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
         // 4. 清除缓存
         cacheService.evictResource(resourceId);
 
-        // 5. 记录状态变更审计日志
-        auditLogService.logStatusChange(resourceId,
-                oldStatus != null ? oldStatus.name() : null,
-                newStatus.name(),
-                operatorId, operatorName);
-
-        // 6. 重新获取更新后的资源
+        // 5. 重新获取更新后的资源
         return resourceRepository.findById(resourceId).orElse(resource);
     }
 
@@ -350,11 +303,6 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
         return resourceRepository.findById(resourceId)
                 .map(resource -> resource.isOwner(userId))
                 .orElse(false);
-    }
-
-    @Override
-    public List<ResourceAuditLog> getAuditLogs(Long resourceId, int page, int size) {
-        return auditLogService.getAuditLogs(resourceId, page, size);
     }
 
     @Override
@@ -515,16 +463,6 @@ public class ResourceDomainServiceImpl implements ResourceDomainService {
         }
         String lowerName = fieldName.toLowerCase();
         return SENSITIVE_FIELDS.stream().anyMatch(lowerName::contains);
-    }
-
-    /**
-     * 判断资源是否为子图类型
-     */
-    private boolean isSubgraphType(Resource resource) {
-        if (resource == null || resource.getResourceType() == null) {
-            return false;
-        }
-        return SUBGRAPH_TYPE_CODE.equals(resource.getResourceType().getCode());
     }
 
     /**
