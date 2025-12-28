@@ -1,7 +1,6 @@
 package com.catface996.aiops.interface_.http.controller;
 
 import com.catface996.aiops.application.api.dto.common.PageResult;
-import com.catface996.aiops.application.api.dto.resource.ResourceAuditLogDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceTypeDTO;
 import com.catface996.aiops.application.api.dto.resource.request.CreateResourceRequest;
@@ -11,7 +10,6 @@ import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceR
 import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceStatusRequest;
 import com.catface996.aiops.application.api.service.resource.ResourceApplicationService;
 import com.catface996.aiops.interface_.http.request.resource.GetResourceRequest;
-import com.catface996.aiops.interface_.http.request.resource.QueryAuditLogsRequest;
 import com.catface996.aiops.interface_.http.request.resource.QueryResourceTypesRequest;
 import com.catface996.aiops.interface_.http.response.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,7 +41,6 @@ import java.util.List;
  *   <li>POST /api/service/v1/resources/update - 更新资源</li>
  *   <li>POST /api/service/v1/resources/delete - 删除资源</li>
  *   <li>POST /api/service/v1/resources/update-status - 更新资源状态</li>
- *   <li>POST /api/service/v1/resources/audit-logs/query - 查询审计日志</li>
  *   <li>POST /api/service/v1/resource-types/query - 查询资源类型列表</li>
  * </ul>
  *
@@ -224,26 +221,6 @@ public class ResourceController {
         ResourceDTO resource = resourceApplicationService.updateResourceStatus(id, request, operatorId, operatorName);
 
         return ResponseEntity.ok(Result.success("资源状态更新成功", resource));
-    }
-
-    /**
-     * 查询资源审计日志
-     */
-    @PostMapping("/resources/audit-logs/query")
-    @Operation(summary = "查询审计日志", description = "查询资源的操作审计日志")
-    @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "查询成功"),
-            @ApiResponse(responseCode = "401", description = "未认证"),
-            @ApiResponse(responseCode = "404", description = "资源不存在")
-    })
-    public ResponseEntity<Result<PageResult<ResourceAuditLogDTO>>> queryAuditLogs(
-            @Valid @RequestBody QueryAuditLogsRequest request) {
-
-        PageResult<ResourceAuditLogDTO> result = resourceApplicationService.getResourceAuditLogs(
-                request.getResourceId(), request.getPage(), request.getSize());
-
-        return ResponseEntity.ok(Result.success(result));
     }
 
     /**

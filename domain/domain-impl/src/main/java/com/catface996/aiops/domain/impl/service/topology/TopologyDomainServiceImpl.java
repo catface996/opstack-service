@@ -3,15 +3,13 @@ package com.catface996.aiops.domain.impl.service.topology;
 import com.catface996.aiops.common.enums.ResourceErrorCode;
 import com.catface996.aiops.common.exception.BusinessException;
 import com.catface996.aiops.domain.constant.ResourceTypeConstants;
-import com.catface996.aiops.domain.model.resource.OperationType;
 import com.catface996.aiops.domain.model.resource.Resource;
 import com.catface996.aiops.domain.model.resource.ResourceStatus;
 import com.catface996.aiops.domain.model.resource.ResourceType;
-import com.catface996.aiops.domain.service.resource.AuditLogService;
-import com.catface996.aiops.domain.service.subgraph.SubgraphMemberDomainService;
 import com.catface996.aiops.domain.service.topology.TopologyDomainService;
 import com.catface996.aiops.repository.resource.ResourceRepository;
 import com.catface996.aiops.repository.resource.ResourceTypeRepository;
+import com.catface996.aiops.repository.topology2.Topology2NodeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -51,8 +49,7 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
 
     private final ResourceRepository resourceRepository;
     private final ResourceTypeRepository resourceTypeRepository;
-    private final AuditLogService auditLogService;
-    private final SubgraphMemberDomainService subgraphMemberDomainService;
+    private final Topology2NodeRepository topology2NodeRepository;
 
     // 缓存 SUBGRAPH 类型ID，避免重复查询
     private Long subgraphTypeIdCache;
@@ -60,12 +57,10 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
     public TopologyDomainServiceImpl(
             ResourceRepository resourceRepository,
             ResourceTypeRepository resourceTypeRepository,
-            AuditLogService auditLogService,
-            SubgraphMemberDomainService subgraphMemberDomainService) {
+            Topology2NodeRepository topology2NodeRepository) {
         this.resourceRepository = resourceRepository;
         this.resourceTypeRepository = resourceTypeRepository;
-        this.auditLogService = auditLogService;
-        this.subgraphMemberDomainService = subgraphMemberDomainService;
+        this.topology2NodeRepository = topology2NodeRepository;
     }
 
     @Override
@@ -95,16 +90,6 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
         // 4. 保存拓扑图
         resourceRepository.insert(topology);
         logger.info("拓扑图创建成功，id: {}, name: {}", topology.getId(), topology.getName());
-
-        // 5. 记录审计日志
-        auditLogService.log(
-                topology.getId(),
-                OperationType.CREATE,
-                null,
-                topology.toString(),
-                operatorId,
-                operatorName
-        );
 
         return topology;
     }
@@ -168,16 +153,6 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
         resourceRepository.updateById(topology);
         logger.info("拓扑图更新成功，id: {}", topologyId);
 
-        // 6. 记录审计日志
-        auditLogService.log(
-                topologyId,
-                OperationType.UPDATE,
-                oldValue,
-                topology.toString(),
-                operatorId,
-                operatorName
-        );
-
         return topology;
     }
 
@@ -190,34 +165,18 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
         Resource topology = getTopologyById(topologyId)
                 .orElseThrow(() -> new BusinessException(ResourceErrorCode.RESOURCE_NOT_FOUND, "拓扑图不存在"));
 
-        // 2. 记录旧值
-        String oldValue = topology.toString();
+        // 2. 解除与所有成员的关联关系
+        topology2NodeRepository.removeAllByTopologyId(topologyId);
+        logger.info("已解除拓扑图 {} 的所有成员关联", topologyId);
 
-        // 3. 解除与所有成员的关联关系 - 获取所有成员ID并批量移除
-        List<Long> memberIds = subgraphMemberDomainService.getMemberIds(topologyId);
-        if (!memberIds.isEmpty()) {
-            subgraphMemberDomainService.removeMembers(topologyId, memberIds, operatorId);
-            logger.info("已解除拓扑图 {} 与 {} 个成员的关联", topologyId, memberIds.size());
-        }
-
-        // 4. 删除拓扑图
+        // 3. 删除拓扑图
         resourceRepository.deleteById(topologyId);
         logger.info("拓扑图删除成功，id: {}", topologyId);
-
-        // 5. 记录审计日志
-        auditLogService.log(
-                topologyId,
-                OperationType.DELETE,
-                oldValue,
-                null,
-                operatorId,
-                operatorName
-        );
     }
 
     @Override
     public int countMembers(Long topologyId) {
-        return subgraphMemberDomainService.countMembers(topologyId);
+        return topology2NodeRepository.countByTopologyId(topologyId);
     }
 
     @Override

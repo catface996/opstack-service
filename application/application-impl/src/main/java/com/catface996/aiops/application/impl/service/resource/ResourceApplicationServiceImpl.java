@@ -1,7 +1,6 @@
 package com.catface996.aiops.application.impl.service.resource;
 
 import com.catface996.aiops.application.api.dto.common.PageResult;
-import com.catface996.aiops.application.api.dto.resource.ResourceAuditLogDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceDTO;
 import com.catface996.aiops.application.api.dto.resource.ResourceTypeDTO;
 import com.catface996.aiops.application.api.dto.resource.request.CreateResourceRequest;
@@ -11,12 +10,9 @@ import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceR
 import com.catface996.aiops.application.api.dto.resource.request.UpdateResourceStatusRequest;
 import com.catface996.aiops.application.api.service.resource.ResourceApplicationService;
 import com.catface996.aiops.domain.constant.ResourceTypeConstants;
-import com.catface996.aiops.domain.model.resource.OperationType;
 import com.catface996.aiops.domain.model.resource.Resource;
-import com.catface996.aiops.domain.model.resource.ResourceAuditLog;
 import com.catface996.aiops.domain.model.resource.ResourceStatus;
 import com.catface996.aiops.domain.model.resource.ResourceType;
-import com.catface996.aiops.domain.service.resource.AuditLogService;
 import com.catface996.aiops.domain.service.resource.ResourceDomainService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +40,9 @@ public class ResourceApplicationServiceImpl implements ResourceApplicationServic
     private static final Logger logger = LoggerFactory.getLogger(ResourceApplicationServiceImpl.class);
 
     private final ResourceDomainService resourceDomainService;
-    private final AuditLogService auditLogService;
 
-    public ResourceApplicationServiceImpl(ResourceDomainService resourceDomainService,
-                                          AuditLogService auditLogService) {
+    public ResourceApplicationServiceImpl(ResourceDomainService resourceDomainService) {
         this.resourceDomainService = resourceDomainService;
-        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -168,18 +161,6 @@ public class ResourceApplicationServiceImpl implements ResourceApplicationServic
     }
 
     @Override
-    public PageResult<ResourceAuditLogDTO> getResourceAuditLogs(Long resourceId, int page, int size) {
-        List<ResourceAuditLog> logs = resourceDomainService.getAuditLogs(resourceId, page, size);
-        long total = auditLogService.countAuditLogs(resourceId);
-
-        List<ResourceAuditLogDTO> dtos = logs.stream()
-                .map(this::toAuditLogDTO)
-                .collect(Collectors.toList());
-
-        return PageResult.of(dtos, page, size, total);
-    }
-
-    @Override
     public List<ResourceTypeDTO> getAllResourceTypes() {
         // 过滤掉 SUBGRAPH 类型，拓扑图类型不应显示在资源类型列表中
         return resourceDomainService.getAllResourceTypes().stream()
@@ -244,27 +225,5 @@ public class ResourceApplicationServiceImpl implements ResourceApplicationServic
                 .icon(type.getIcon())
                 .systemPreset(type.getIsSystem())
                 .build();
-    }
-
-    private ResourceAuditLogDTO toAuditLogDTO(ResourceAuditLog log) {
-        if (log == null) {
-            return null;
-        }
-
-        ResourceAuditLogDTO.ResourceAuditLogDTOBuilder builder = ResourceAuditLogDTO.builder()
-                .id(log.getId())
-                .resourceId(log.getResourceId())
-                .oldValue(log.getOldValue())
-                .newValue(log.getNewValue())
-                .operatorId(log.getOperatorId())
-                .operatorName(log.getOperatorName())
-                .operatedAt(log.getCreatedAt());
-
-        if (log.getOperation() != null) {
-            builder.operation(log.getOperation().name())
-                    .operationDisplay(log.getOperation().getDescription());
-        }
-
-        return builder.build();
     }
 }

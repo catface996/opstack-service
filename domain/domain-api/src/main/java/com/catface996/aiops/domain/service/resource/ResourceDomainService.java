@@ -1,7 +1,6 @@
 package com.catface996.aiops.domain.service.resource;
 
 import com.catface996.aiops.domain.model.resource.Resource;
-import com.catface996.aiops.domain.model.resource.ResourceAuditLog;
 import com.catface996.aiops.domain.model.resource.ResourceStatus;
 import com.catface996.aiops.domain.model.resource.ResourceType;
 
@@ -191,15 +190,6 @@ public interface ResourceDomainService {
      */
     boolean checkOwnerPermission(Long resourceId, Long userId, boolean isAdmin);
 
-    /**
-     * 获取资源的审计日志
-     *
-     * @param resourceId 资源ID
-     * @param page 页码（从1开始）
-     * @param size 每页大小
-     * @return 审计日志列表
-     */
-    List<ResourceAuditLog> getAuditLogs(Long resourceId, int page, int size);
 
     /**
      * 获取所有资源类型
