@@ -2,9 +2,11 @@ package com.catface996.aiops.application.api.service.topology;
 
 import com.catface996.aiops.application.api.dto.common.PageResult;
 import com.catface996.aiops.application.api.dto.node.NodeDTO;
+import com.catface996.aiops.application.api.dto.topology.HierarchicalTeamDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyGraphDTO;
 import com.catface996.aiops.application.api.dto.topology.request.CreateTopologyRequest;
+import com.catface996.aiops.application.api.dto.topology.request.HierarchicalTeamQueryRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryMembersRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologiesRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologyGraphRequest;
@@ -126,27 +128,29 @@ public interface TopologyApplicationService {
     TopologyGraphDTO getTopologyGraph(QueryTopologyGraphRequest request);
 
     // ===== Global Supervisor Agent 绑定方法 =====
+    // Note: 绑定方法已移至 AgentBoundApplicationService (Feature 040)
+
+    // ===== 层级团队查询 =====
 
     /**
-     * 绑定 Global Supervisor Agent
+     * 查询层级团队结构
      *
-     * <p>将指定的 Agent 绑定到拓扑图作为 Global Supervisor。</p>
+     * <p>根据拓扑图 ID 查询该拓扑图关联的层级化 Agent 团队结构。</p>
+     * <p>返回结构包含：</p>
+     * <ul>
+     *   <li>Global Supervisor: 拓扑图绑定的全局监管者</li>
+     *   <li>Teams: 资源节点对应的团队列表（每个团队包含 Supervisor 和 Workers）</li>
+     * </ul>
      *
-     * @param topologyId 拓扑图ID
-     * @param agentId    Agent ID（必须为 GLOBAL_SUPERVISOR 角色）
-     * @param operatorId 操作人ID
-     * @return 更新后的拓扑图 DTO
+     * <p>需求追溯：</p>
+     * <ul>
+     *   <li>FR-001: 系统必须支持根据拓扑图 ID 查询层级团队结构</li>
+     *   <li>US1: 查询拓扑图的层级团队结构</li>
+     * </ul>
+     *
+     * @param request 查询请求
+     * @return 层级团队 DTO
+     * @throws IllegalArgumentException 如果拓扑图不存在
      */
-    TopologyDTO bindGlobalSupervisorAgent(Long topologyId, Long agentId, Long operatorId);
-
-    /**
-     * 解绑 Global Supervisor Agent
-     *
-     * <p>解除拓扑图与 Global Supervisor Agent 的绑定关系。</p>
-     *
-     * @param topologyId 拓扑图ID
-     * @param operatorId 操作人ID
-     * @return 更新后的拓扑图 DTO
-     */
-    TopologyDTO unbindGlobalSupervisorAgent(Long topologyId, Long operatorId);
+    HierarchicalTeamDTO queryHierarchicalTeam(HierarchicalTeamQueryRequest request);
 }

@@ -1,10 +1,14 @@
 package com.catface996.aiops.application.impl.service.topology;
 
+import com.catface996.aiops.application.api.dto.agent.AgentDTO;
 import com.catface996.aiops.application.api.dto.common.PageResult;
 import com.catface996.aiops.application.api.dto.node.NodeDTO;
+import com.catface996.aiops.application.api.dto.topology.HierarchicalTeamDTO;
+import com.catface996.aiops.application.api.dto.topology.TeamDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyGraphDTO;
 import com.catface996.aiops.application.api.dto.topology.request.CreateTopologyRequest;
+import com.catface996.aiops.application.api.dto.topology.request.HierarchicalTeamQueryRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryMembersRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologiesRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologyGraphRequest;
@@ -19,14 +23,18 @@ import com.catface996.aiops.domain.model.topology.TopologyGraphData;
 import com.catface996.aiops.domain.service.node.NodeDomainService;
 import com.catface996.aiops.domain.service.topology2.TopologyDomainService;
 import com.catface996.aiops.repository.agent.AgentRepository;
+import com.catface996.aiops.repository.node.NodeAgentRelationRepository;
 import com.catface996.aiops.repository.node.NodeTypeRepository;
+import com.catface996.aiops.repository.topology2.Topology2NodeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -55,15 +63,21 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
     private final NodeDomainService nodeDomainService;
     private final NodeTypeRepository nodeTypeRepository;
     private final AgentRepository agentRepository;
+    private final Topology2NodeRepository topology2NodeRepository;
+    private final NodeAgentRelationRepository nodeAgentRelationRepository;
 
     public TopologyApplicationServiceImpl(@Qualifier("topologyDomainServiceV2") TopologyDomainService topologyDomainService,
                                           NodeDomainService nodeDomainService,
                                           NodeTypeRepository nodeTypeRepository,
-                                          AgentRepository agentRepository) {
+                                          AgentRepository agentRepository,
+                                          Topology2NodeRepository topology2NodeRepository,
+                                          NodeAgentRelationRepository nodeAgentRelationRepository) {
         this.topologyDomainService = topologyDomainService;
         this.nodeDomainService = nodeDomainService;
         this.nodeTypeRepository = nodeTypeRepository;
         this.agentRepository = agentRepository;
+        this.topology2NodeRepository = topology2NodeRepository;
+        this.nodeAgentRelationRepository = nodeAgentRelationRepository;
     }
 
     @Override
@@ -280,23 +294,7 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
     }
 
     // ===== Global Supervisor Agent 绑定方法 =====
-
-    @Override
-    public TopologyDTO bindGlobalSupervisorAgent(Long topologyId, Long agentId, Long operatorId) {
-        logger.info("绑定 Global Supervisor Agent，topologyId: {}, agentId: {}, operatorId: {}",
-                topologyId, agentId, operatorId);
-
-        Topology topology = topologyDomainService.bindGlobalSupervisorAgent(topologyId, agentId, operatorId);
-        return toDTO(topology);
-    }
-
-    @Override
-    public TopologyDTO unbindGlobalSupervisorAgent(Long topologyId, Long operatorId) {
-        logger.info("解绑 Global Supervisor Agent，topologyId: {}, operatorId: {}", topologyId, operatorId);
-
-        Topology topology = topologyDomainService.unbindGlobalSupervisorAgent(topologyId, operatorId);
-        return toDTO(topology);
-    }
+    // Note: 绑定方法已移至 AgentBoundApplicationService (Feature 040)
 
     private TopologyGraphDTO toTopologyGraphDTO(TopologyGraphData graphData) {
         TopologyGraphDTO result = new TopologyGraphDTO();
@@ -334,5 +332,128 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
         result.setEdges(edges);
 
         return result;
+    }
+
+    // ===== 层级团队查询 =====
+
+    @Override
+    public HierarchicalTeamDTO queryHierarchicalTeam(HierarchicalTeamQueryRequest request) {
+        logger.info("查询层级团队，topologyId: {}", request.getTopologyId());
+
+        // 1. 获取拓扑图信息
+        Topology topology = topologyDomainService.getTopologyById(request.getTopologyId())
+                .orElseThrow(() -> new IllegalArgumentException("Topology not found: " + request.getTopologyId()));
+
+        // 2. 获取 Global Supervisor Agent
+        AgentDTO globalSupervisorDTO = null;
+        if (topology.getGlobalSupervisorAgentId() != null) {
+            globalSupervisorDTO = agentRepository.findById(topology.getGlobalSupervisorAgentId())
+                    .map(this::toAgentDTO)
+                    .orElse(null);
+        }
+
+        // 3. 获取拓扑图的成员节点列表
+        List<Topology2NodeRepository.MemberInfo> members = topology2NodeRepository.findMembersByTopologyId(request.getTopologyId());
+
+        if (members.isEmpty()) {
+            // 空拓扑图，返回空 teams 列表
+            return HierarchicalTeamDTO.builder()
+                    .topologyId(topology.getId())
+                    .topologyName(topology.getName())
+                    .globalSupervisor(globalSupervisorDTO)
+                    .teams(new ArrayList<>())
+                    .build();
+        }
+
+        // 4. 提取所有节点ID
+        List<Long> nodeIds = members.stream()
+                .map(Topology2NodeRepository.MemberInfo::nodeId)
+                .collect(Collectors.toList());
+
+        // 5. 批量获取所有节点关联的 Agent 及其层级信息
+        List<Map<String, Object>> agentsWithHierarchy = nodeAgentRelationRepository.findAgentsWithHierarchyByNodeIds(nodeIds);
+
+        // 6. 按节点ID分组
+        Map<Long, List<Map<String, Object>>> agentsByNodeId = new HashMap<>();
+        for (Map<String, Object> agentInfo : agentsWithHierarchy) {
+            Long nodeId = ((Number) agentInfo.get("nodeId")).longValue();
+            agentsByNodeId.computeIfAbsent(nodeId, k -> new ArrayList<>()).add(agentInfo);
+        }
+
+        // 7. 组装 Teams 列表
+        List<TeamDTO> teams = new ArrayList<>();
+        for (Topology2NodeRepository.MemberInfo member : members) {
+            List<Map<String, Object>> nodeAgents = agentsByNodeId.getOrDefault(member.nodeId(), new ArrayList<>());
+
+            // 分离 Supervisor 和 Workers
+            AgentDTO supervisor = null;
+            List<AgentDTO> workers = new ArrayList<>();
+
+            for (Map<String, Object> agentInfo : nodeAgents) {
+                String hierarchyLevel = (String) agentInfo.get("hierarchyLevel");
+                AgentDTO agentDTO = mapToAgentDTO(agentInfo);
+
+                if ("TEAM_SUPERVISOR".equals(hierarchyLevel)) {
+                    if (supervisor == null) {
+                        // FR-009: 当节点绑定多个 TEAM_SUPERVISOR 时，取创建时间最早的一个
+                        // 由于 SQL 已按 created_at 排序，第一个即为最早的
+                        supervisor = agentDTO;
+                    }
+                } else if ("TEAM_WORKER".equals(hierarchyLevel)) {
+                    workers.add(agentDTO);
+                }
+            }
+
+            TeamDTO team = TeamDTO.builder()
+                    .nodeId(member.nodeId())
+                    .nodeName(member.nodeName())
+                    .supervisor(supervisor)
+                    .workers(workers)
+                    .build();
+            teams.add(team);
+        }
+
+        // 8. 返回结果
+        return HierarchicalTeamDTO.builder()
+                .topologyId(topology.getId())
+                .topologyName(topology.getName())
+                .globalSupervisor(globalSupervisorDTO)
+                .teams(teams)
+                .build();
+    }
+
+    private AgentDTO toAgentDTO(Agent agent) {
+        if (agent == null) {
+            return null;
+        }
+        return AgentDTO.builder()
+                .id(agent.getId())
+                .name(agent.getName())
+                .role(agent.getRole() != null ? agent.getRole().name() : null)
+                .hierarchyLevel(agent.getHierarchyLevel() != null ? agent.getHierarchyLevel().name() : null)
+                .specialty(agent.getSpecialty())
+                .model(agent.getModel())
+                .promptTemplateId(agent.getPromptTemplateId())
+                .promptTemplateName(agent.getPromptTemplateName())
+                .temperature(agent.getTemperature())
+                .topP(agent.getTopP())
+                .maxTokens(agent.getMaxTokens())
+                .maxRuntime(agent.getMaxRuntime())
+                .warnings(agent.getWarnings())
+                .critical(agent.getCritical())
+                .createdAt(agent.getCreatedAt())
+                .updatedAt(agent.getUpdatedAt())
+                .build();
+    }
+
+    private AgentDTO mapToAgentDTO(Map<String, Object> agentInfo) {
+        return AgentDTO.builder()
+                .id(((Number) agentInfo.get("id")).longValue())
+                .name((String) agentInfo.get("name"))
+                .role((String) agentInfo.get("role"))
+                .hierarchyLevel((String) agentInfo.get("hierarchyLevel"))
+                .specialty((String) agentInfo.get("specialty"))
+                .model((String) agentInfo.get("model"))
+                .build();
     }
 }

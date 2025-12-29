@@ -85,4 +85,14 @@ public interface NodeAgentRelationRepository {
      * @return true 如果关联存在
      */
     boolean existsByNodeIdAndAgentId(Long nodeId, Long agentId);
+
+    /**
+     * 批量查询指定节点的 Agent 及其层级信息
+     *
+     * <p>用于层级团队查询，一次性获取多个节点关联的所有 Agent</p>
+     *
+     * @param nodeIds 节点 ID 列表
+     * @return Agent 信息列表（包含 nodeId 标识所属节点）
+     */
+    List<java.util.Map<String, Object>> findAgentsWithHierarchyByNodeIds(List<Long> nodeIds);
 }
