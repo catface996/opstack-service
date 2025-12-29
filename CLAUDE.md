@@ -9,6 +9,9 @@ Auto-generated from all feature plans. Last updated: 2025-11-21
 - MySQL 8.0, Flyway migrations (027-agent-management)
 - MySQL 8.0 (通过 Flyway 迁移) (001-remove-relationship)
 - Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, Flyway (033-database-schema-compliance)
+- MySQL 8.0 (existing tables: topology, node, agent, topology_2_node, node_2_agent) (038-hierarchical-team-query)
+- Java 21 (LTS) + Spring Boot 3.4.x, Spring WebFlux (for WebClient SSE), MyBatis-Plus 3.5.x, SpringDoc OpenAPI (039-trigger-multiagent-execution)
+- MySQL 8.0 (existing topology/agent data) (039-trigger-multiagent-execution)
 
 - Java 21 (LTS) + Spring Boot 3.4.1, Spring Web MVC, SpringDoc OpenAPI (024-post-only-api)
 - MySQL 8.0 (通过 MyBatis-Plus) (024-post-only-api)
@@ -51,9 +54,9 @@ mvn test
 Java 21 (LTS): Follow standard conventions
 
 ## Recent Changes
+- 039-trigger-multiagent-execution: Added Java 21 (LTS) + Spring Boot 3.4.x, Spring WebFlux (for WebClient SSE), MyBatis-Plus 3.5.x, SpringDoc OpenAPI
+- 038-hierarchical-team-query: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
 - 036-refactor-sql-to-xml: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x
-- 033-database-schema-compliance: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, Flyway
-- 001-remove-relationship: Added Java 21 (LTS) + Spring Boot 3.4.x, MyBatis-Plus 3.5.x, SpringDoc OpenAPI
 
 
 <!-- MANUAL ADDITIONS START -->

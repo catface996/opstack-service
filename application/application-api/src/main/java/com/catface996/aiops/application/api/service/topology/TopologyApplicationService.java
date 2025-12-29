@@ -2,9 +2,11 @@ package com.catface996.aiops.application.api.service.topology;
 
 import com.catface996.aiops.application.api.dto.common.PageResult;
 import com.catface996.aiops.application.api.dto.node.NodeDTO;
+import com.catface996.aiops.application.api.dto.topology.HierarchicalTeamDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyDTO;
 import com.catface996.aiops.application.api.dto.topology.TopologyGraphDTO;
 import com.catface996.aiops.application.api.dto.topology.request.CreateTopologyRequest;
+import com.catface996.aiops.application.api.dto.topology.request.HierarchicalTeamQueryRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryMembersRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologiesRequest;
 import com.catface996.aiops.application.api.dto.topology.request.QueryTopologyGraphRequest;
@@ -149,4 +151,28 @@ public interface TopologyApplicationService {
      * @return 更新后的拓扑图 DTO
      */
     TopologyDTO unbindGlobalSupervisorAgent(Long topologyId, Long operatorId);
+
+    // ===== 层级团队查询 =====
+
+    /**
+     * 查询层级团队结构
+     *
+     * <p>根据拓扑图 ID 查询该拓扑图关联的层级化 Agent 团队结构。</p>
+     * <p>返回结构包含：</p>
+     * <ul>
+     *   <li>Global Supervisor: 拓扑图绑定的全局监管者</li>
+     *   <li>Teams: 资源节点对应的团队列表（每个团队包含 Supervisor 和 Workers）</li>
+     * </ul>
+     *
+     * <p>需求追溯：</p>
+     * <ul>
+     *   <li>FR-001: 系统必须支持根据拓扑图 ID 查询层级团队结构</li>
+     *   <li>US1: 查询拓扑图的层级团队结构</li>
+     * </ul>
+     *
+     * @param request 查询请求
+     * @return 层级团队 DTO
+     * @throws IllegalArgumentException 如果拓扑图不存在
+     */
+    HierarchicalTeamDTO queryHierarchicalTeam(HierarchicalTeamQueryRequest request);
 }

@@ -92,6 +92,12 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- Spring WebFlux for WebClient (SSE streaming) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- Test Dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

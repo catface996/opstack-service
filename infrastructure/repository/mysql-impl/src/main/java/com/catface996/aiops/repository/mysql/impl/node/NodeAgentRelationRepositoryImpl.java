@@ -74,6 +74,14 @@ public class NodeAgentRelationRepositoryImpl implements NodeAgentRelationReposit
         return nodeAgentRelationMapper.selectByNodeIdAndAgentId(nodeId, agentId) != null;
     }
 
+    @Override
+    public List<java.util.Map<String, Object>> findAgentsWithHierarchyByNodeIds(List<Long> nodeIds) {
+        if (nodeIds == null || nodeIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return nodeAgentRelationMapper.selectAgentsWithHierarchyByNodeIds(nodeIds);
+    }
+
     // ==================== 转换方法 ====================
 
     /**
