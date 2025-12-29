@@ -17,6 +17,7 @@
             JOIN topology_2_node t2n ON n.id = t2n.node_id
         </if>
         <where>
+            n.deleted = 0
             <if test="keyword != null and keyword != ''">
                 AND (n.name LIKE CONCAT('%', #{keyword}, '%') OR n.description LIKE CONCAT('%', #{keyword}, '%'))
             </if>
@@ -41,6 +42,7 @@
             JOIN topology_2_node t2n ON n.id = t2n.node_id
         </if>
         <where>
+            n.deleted = 0
             <if test="keyword != null and keyword != ''">
                 AND (n.name LIKE CONCAT('%', #{keyword}, '%') OR n.description LIKE CONCAT('%', #{keyword}, '%'))
             </if>
@@ -61,27 +63,27 @@
         SELECT n.*, nt.code AS node_type_code, nt.name AS node_type_name
         FROM node n
         JOIN node_type nt ON n.node_type_id = nt.id
-        WHERE n.id = #{id}
+        WHERE n.id = #{id} AND n.deleted = 0
     </select>
 
     <!-- 根据类型ID和名称查询节点 -->
     <select id="selectByTypeIdAndName" resultType="com.catface996.aiops.repository.mysql.po.node.NodePO">
         SELECT <include refid="Base_Column_List"/>
         FROM node
-        WHERE node_type_id = #{nodeTypeId} AND name = #{name}
+        WHERE node_type_id = #{nodeTypeId} AND name = #{name} AND deleted = 0
     </select>
 
     <!-- 根据名称查询节点 -->
     <select id="selectByName" resultType="com.catface996.aiops.repository.mysql.po.node.NodePO">
         SELECT <include refid="Base_Column_List"/>
         FROM node
-        WHERE name = #{name}
+        WHERE name = #{name} AND deleted = 0
     </select>
 
     <!-- 查询存在的节点ID列表 -->
     <select id="findExistingIds" resultType="java.lang.Long">
         SELECT id FROM node
-        WHERE id IN
+        WHERE deleted = 0 AND id IN
         <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
