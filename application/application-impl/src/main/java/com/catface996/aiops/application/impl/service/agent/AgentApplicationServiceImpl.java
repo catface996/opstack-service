@@ -90,11 +90,6 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
             hierarchyLevel = AgentHierarchyLevel.TEAM_WORKER;
         }
 
-        // GLOBAL_SUPERVISOR 层级只能有一个
-        if (hierarchyLevel == AgentHierarchyLevel.GLOBAL_SUPERVISOR && agentRepository.existsGlobalSupervisor()) {
-            throw new BusinessException(AgentErrorCode.GLOBAL_SUPERVISOR_EXISTS);
-        }
-
         if (agentRepository.existsByName(request.getName(), null)) {
             throw new BusinessException(AgentErrorCode.AGENT_NAME_EXISTS, request.getName());
         }
@@ -149,10 +144,6 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
         if (request.getHierarchyLevel() != null) {
             AgentHierarchyLevel newLevel = AgentHierarchyLevel.fromName(request.getHierarchyLevel());
             if (newLevel != null && newLevel != agent.getHierarchyLevel()) {
-                // 如果要变成 GLOBAL_SUPERVISOR，检查是否已存在
-                if (newLevel == AgentHierarchyLevel.GLOBAL_SUPERVISOR && agentRepository.existsGlobalSupervisor()) {
-                    throw new BusinessException(AgentErrorCode.GLOBAL_SUPERVISOR_EXISTS);
-                }
                 agent.setHierarchyLevel(newLevel);
             }
         }
