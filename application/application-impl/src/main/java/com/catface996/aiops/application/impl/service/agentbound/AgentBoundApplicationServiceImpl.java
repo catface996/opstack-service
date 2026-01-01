@@ -13,7 +13,9 @@ import com.catface996.aiops.domain.model.agentbound.AgentBound;
 import com.catface996.aiops.domain.model.agentbound.BoundEntityType;
 import com.catface996.aiops.domain.service.agentbound.AgentBoundDomainService;
 import com.catface996.aiops.repository.agent.AgentRepository;
+import com.catface996.aiops.repository.node.NodeRepository;
 import com.catface996.aiops.repository.topology2.TopologyRepository;
+import com.catface996.aiops.domain.model.node.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -38,13 +40,16 @@ public class AgentBoundApplicationServiceImpl implements AgentBoundApplicationSe
     private final AgentBoundDomainService agentBoundDomainService;
     private final AgentRepository agentRepository;
     private final TopologyRepository topologyRepository;
+    private final NodeRepository nodeRepository;
 
     public AgentBoundApplicationServiceImpl(AgentBoundDomainService agentBoundDomainService,
                                              AgentRepository agentRepository,
-                                             TopologyRepository topologyRepository) {
+                                             TopologyRepository topologyRepository,
+                                             NodeRepository nodeRepository) {
         this.agentBoundDomainService = agentBoundDomainService;
         this.agentRepository = agentRepository;
         this.topologyRepository = topologyRepository;
+        this.nodeRepository = nodeRepository;
     }
 
     @Override
@@ -147,16 +152,23 @@ public class AgentBoundApplicationServiceImpl implements AgentBoundApplicationSe
         var topology = topologyRepository.findById(topologyId)
                 .orElseThrow(() -> new IllegalArgumentException("Topology 不存在: " + topologyId));
 
-        // 2. 查询所有绑定
+        // 2. 查询 Topology 下的所有节点（不分页，获取全部）
+        List<Node> allNodes = nodeRepository.findByCondition(null, null, null, null, topologyId, 1, Integer.MAX_VALUE);
+        log.info("Topology {} 下共有 {} 个节点", topologyId, allNodes.size());
+
+        // 3. 查询所有绑定
         List<AgentBound> allBindings = agentBoundDomainService.queryHierarchyByTopology(topologyId);
 
-        // 3. 分离 Global Supervisor 和 Node 团队绑定
+        // 4. 分离 Global Supervisor 和 Node 团队绑定
         AgentDTO globalSupervisor = null;
         Map<Long, List<AgentBound>> nodeBindingsMap = new LinkedHashMap<>();
 
         for (AgentBound binding : allBindings) {
             if (binding.isGlobalSupervisorBinding()) {
-                globalSupervisor = toAgentDTO(binding);
+                // 一个 Topology 只有一个 Global Supervisor
+                if (globalSupervisor == null) {
+                    globalSupervisor = toAgentDTO(binding);
+                }
             } else {
                 // Node 绑定
                 Long nodeId = binding.getEntityId();
@@ -164,22 +176,24 @@ public class AgentBoundApplicationServiceImpl implements AgentBoundApplicationSe
             }
         }
 
-        // 4. 构建团队列表
+        // 5. 构建团队列表（即使节点没有绑定 Agent 也会返回）
         List<HierarchyTeamDTO> teams = new ArrayList<>();
-        for (Map.Entry<Long, List<AgentBound>> entry : nodeBindingsMap.entrySet()) {
-            Long nodeId = entry.getKey();
-            List<AgentBound> nodeBindings = entry.getValue();
+        for (Node node : allNodes) {
+            Long nodeId = node.getId();
+            String nodeName = node.getName();
 
             AgentDTO supervisor = null;
             List<AgentDTO> workers = new ArrayList<>();
-            String nodeName = null;
 
-            for (AgentBound b : nodeBindings) {
-                nodeName = b.getEntityName(); // 从任意绑定获取节点名称
-                if (b.isTeamSupervisorBinding()) {
-                    supervisor = toAgentDTO(b);
-                } else if (b.isWorkerBinding()) {
-                    workers.add(toAgentDTO(b));
+            // 如果该节点有绑定记录，则从绑定中获取 Agent 信息
+            List<AgentBound> nodeBindings = nodeBindingsMap.get(nodeId);
+            if (nodeBindings != null) {
+                for (AgentBound b : nodeBindings) {
+                    if (b.isTeamSupervisorBinding()) {
+                        supervisor = toAgentDTO(b);
+                    } else if (b.isWorkerBinding()) {
+                        workers.add(toAgentDTO(b));
+                    }
                 }
             }
 
@@ -191,7 +205,7 @@ public class AgentBoundApplicationServiceImpl implements AgentBoundApplicationSe
                     .build());
         }
 
-        // 5. 构建返回结果
+        // 6. 构建返回结果
         return HierarchyStructureDTO.builder()
                 .topologyId(topologyId)
                 .topologyName(topology.getName())
@@ -231,6 +245,14 @@ public class AgentBoundApplicationServiceImpl implements AgentBoundApplicationSe
                 .role(binding.getAgentRole())
                 .hierarchyLevel(binding.getHierarchyLevel() != null
                         ? binding.getHierarchyLevel().name() : null)
+                .specialty(binding.getAgentSpecialty())
+                .modelName(binding.getAgentModelName())
+                .providerModelId(binding.getAgentProviderModelId())
+                .temperature(binding.getAgentTemperature())
+                .topP(binding.getAgentTopP())
+                .maxTokens(binding.getAgentMaxTokens())
+                .boundId(binding.getId())
+                .promptTemplateContent(binding.getPromptTemplateContent())
                 .build();
     }
 }

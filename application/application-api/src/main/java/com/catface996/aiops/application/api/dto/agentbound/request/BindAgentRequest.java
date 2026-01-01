@@ -35,4 +35,8 @@ public class BindAgentRequest {
     @NotNull(message = "实体类型不能为空")
     @Schema(description = "实体类型：TOPOLOGY 或 NODE", example = "NODE", requiredMode = Schema.RequiredMode.REQUIRED)
     private String entityType;
+
+    @NotNull(message = "操作人 ID 不能为空")
+    @Schema(description = "操作人 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long operatorId;
 }

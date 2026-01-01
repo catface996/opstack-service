@@ -1,12 +1,12 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.2.0 → 1.3.0 (MINOR: Added SQL Query Standards principle)
+Version change: 1.3.0 → 1.4.0 (MINOR: Added Process Management Standards)
 
 Modified principles: None
 
 Added sections:
-- VIII. SQL Query Standards (新增 SQL 查询规范)
+- IX. Process Management Standards (新增进程管理规范)
 
 Removed sections: None
 
@@ -356,6 +356,44 @@ JOIN node n ON t.id = n.topology_id;
 -- INSERT INTO node_backup SELECT * FROM node WHERE created_at < '2025-01-01';
 ```
 
+### IX. Process Management Standards
+
+终止应用进程 MUST 使用基于端口号的方式，MUST NOT 使用其他方式（如 pkill、pgrep 等基于进程名的方式）。
+
+#### 正确方式（MUST）
+
+使用 `lsof` 根据端口号查找并终止进程：
+
+```bash
+# 终止占用 8081 端口的进程
+lsof -ti :8081 | xargs kill 2>/dev/null || echo "No process on port 8081"
+
+# 强制终止（慎用）
+lsof -ti :8081 | xargs kill -9 2>/dev/null || echo "No process on port 8081"
+```
+
+#### 禁止的方式（MUST NOT）
+
+```bash
+# MUST NOT: 禁止使用基于进程名的方式
+pkill -f "bootstrap-1.0.0-SNAPSHOT.jar"
+pgrep -f "bootstrap-1.0.0-SNAPSHOT.jar" | xargs kill
+ps aux | grep bootstrap | grep -v grep | awk '{print $2}' | xargs kill
+```
+
+#### 原因
+
+- **精确性**: 端口号精确标识服务，避免误杀同名进程
+- **可预测性**: 端口号在配置中明确定义（如 `server.port=8081`），行为可预测
+- **安全性**: 避免因进程名匹配错误导致误杀其他进程
+- **一致性**: 团队统一使用相同的进程管理方式
+
+#### 常用端口
+
+| 环境 | 端口 | 说明 |
+|------|------|------|
+| local | 8081 | 本地开发环境 |
+
 ## API Design Standards
 
 ### Request/Response 规范
@@ -430,5 +468,6 @@ mvn test
 - 分页接口 MUST 遵循 Pagination Protocol
 - 数据库表设计 MUST 遵循 Database Design Standards
 - SQL 查询 MUST 遵循 SQL Query Standards
+- 进程管理 MUST 遵循 Process Management Standards（使用端口号终止进程）
 
-**Version**: 1.3.0 | **Ratified**: 2025-12-27 | **Last Amended**: 2025-12-30
+**Version**: 1.4.0 | **Ratified**: 2025-12-27 | **Last Amended**: 2025-12-30

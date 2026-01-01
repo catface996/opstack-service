@@ -5,14 +5,14 @@
 
     <sql id="Base_Column_List">
         id, source_id, target_id, relationship_type, direction, strength, status, description,
-        created_by, created_at, updated_by, updated_at, deleted
+        created_by, created_at, updated_by, updated_at
     </sql>
 
     <!-- 查询节点的出边关系（带节点名称） -->
     <select id="selectOutgoingBySourceId" resultType="com.catface996.aiops.repository.mysql.po.node.Node2NodePO">
         SELECT n2n.id, n2n.source_id, n2n.target_id, n2n.relationship_type, n2n.direction,
                n2n.strength, n2n.status, n2n.description, n2n.created_by, n2n.created_at,
-               n2n.updated_by, n2n.updated_at, n2n.deleted,
+               n2n.updated_by, n2n.updated_at,
                n.name AS target_name
         FROM node_2_node n2n
         JOIN node n ON n2n.target_id = n.id
@@ -23,7 +23,7 @@
     <select id="selectIncomingByTargetId" resultType="com.catface996.aiops.repository.mysql.po.node.Node2NodePO">
         SELECT n2n.id, n2n.source_id, n2n.target_id, n2n.relationship_type, n2n.direction,
                n2n.strength, n2n.status, n2n.description, n2n.created_by, n2n.created_at,
-               n2n.updated_by, n2n.updated_at, n2n.deleted,
+               n2n.updated_by, n2n.updated_at,
                n.name AS source_name
         FROM node_2_node n2n
         JOIN node n ON n2n.source_id = n.id

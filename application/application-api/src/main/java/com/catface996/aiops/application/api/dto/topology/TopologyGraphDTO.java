@@ -111,6 +111,9 @@ public class TopologyGraphDTO {
     @Schema(description = "图边（节点关系）")
     public static class GraphEdgeDTO {
 
+        @Schema(description = "边ID（Node2Node关系ID）", example = "1")
+        private Long id;
+
         @Schema(description = "源节点ID", example = "201")
         private Long sourceId;
 

@@ -118,4 +118,28 @@ public interface AgentMapper extends BaseMapper<AgentPO> {
      * @return 影响行数
      */
     int softDeleteById(@Param("id") Long id, @Param("updatedAt") LocalDateTime updatedAt);
+
+    /**
+     * 分页查询未绑定到指定拓扑图的 Global Supervisor Agent
+     *
+     * <p>查询 GLOBAL_SUPERVISOR 层级且未在排除列表中的 Agent。</p>
+     *
+     * @param page            分页参数
+     * @param excludeAgentIds 要排除的 Agent ID 列表（已绑定的）
+     * @param keyword         关键词搜索（可选）
+     * @return 分页结果
+     */
+    IPage<AgentPO> selectPageUnboundGlobalSupervisors(Page<AgentPO> page,
+                                                       @Param("excludeAgentIds") List<Long> excludeAgentIds,
+                                                       @Param("keyword") String keyword);
+
+    /**
+     * 统计未绑定到指定拓扑图的 Global Supervisor Agent 数量
+     *
+     * @param excludeAgentIds 要排除的 Agent ID 列表（已绑定的）
+     * @param keyword         关键词搜索（可选）
+     * @return Agent 数量
+     */
+    long countUnboundGlobalSupervisors(@Param("excludeAgentIds") List<Long> excludeAgentIds,
+                                       @Param("keyword") String keyword);
 }

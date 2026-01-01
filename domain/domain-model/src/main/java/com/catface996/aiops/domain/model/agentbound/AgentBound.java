@@ -89,9 +89,34 @@ public class AgentBound {
     private String agentSpecialty;
 
     /**
-     * Agent 使用的模型（JOIN 查询填充）
+     * Agent 模型友好名称（JOIN 查询填充）
      */
-    private String agentModel;
+    private String agentModelName;
+
+    /**
+     * Agent 模型提供商标识符（JOIN 查询填充）
+     */
+    private String agentProviderModelId;
+
+    /**
+     * Agent 温度参数（JOIN 查询填充）
+     */
+    private Double agentTemperature;
+
+    /**
+     * Agent Top-P 参数（JOIN 查询填充）
+     */
+    private Double agentTopP;
+
+    /**
+     * Agent 最大 Token 数（JOIN 查询填充）
+     */
+    private Integer agentMaxTokens;
+
+    /**
+     * Agent 关联的提示词模板内容（JOIN 查询填充，作为 system_prompt 来源）
+     */
+    private String promptTemplateContent;
 
     /**
      * 工厂方法：创建新的绑定关系
@@ -166,9 +191,74 @@ public class AgentBound {
     }
 
     /**
-     * 设置 Agent 使用的模型
+     * 设置 Agent 模型友好名称
      */
-    public void setAgentModel(String agentModel) {
-        this.agentModel = agentModel;
+    public void setAgentModelName(String agentModelName) {
+        this.agentModelName = agentModelName;
+    }
+
+    /**
+     * 获取 Agent 模型友好名称
+     */
+    public String getAgentModelName() {
+        return agentModelName;
+    }
+
+    /**
+     * 设置 Agent 模型提供商标识符
+     */
+    public void setAgentProviderModelId(String agentProviderModelId) {
+        this.agentProviderModelId = agentProviderModelId;
+    }
+
+    /**
+     * 获取 Agent 模型提供商标识符
+     */
+    public String getAgentProviderModelId() {
+        return agentProviderModelId;
+    }
+
+    /**
+     * 设置 Agent LLM 配置参数
+     */
+    public void setLlmConfig(Double temperature, Double topP, Integer maxTokens) {
+        this.agentTemperature = temperature;
+        this.agentTopP = topP;
+        this.agentMaxTokens = maxTokens;
+    }
+
+    /**
+     * 获取 Agent 温度参数
+     */
+    public Double getAgentTemperature() {
+        return agentTemperature;
+    }
+
+    /**
+     * 获取 Agent Top-P 参数
+     */
+    public Double getAgentTopP() {
+        return agentTopP;
+    }
+
+    /**
+     * 获取 Agent 最大 Token 数
+     */
+    public Integer getAgentMaxTokens() {
+        return agentMaxTokens;
+    }
+
+    /**
+     * 获取 Agent 关联的提示词模板内容
+     */
+    public String getPromptTemplateContent() {
+        return promptTemplateContent;
+    }
+
+    /**
+     * 设置 Agent 关联的提示词模板内容
+     */
+    public void setPromptTemplateContent(String promptTemplateContent) {
+        this.promptTemplateContent = promptTemplateContent;
     }
 }

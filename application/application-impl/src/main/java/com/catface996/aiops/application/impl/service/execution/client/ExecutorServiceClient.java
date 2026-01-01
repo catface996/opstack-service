@@ -60,6 +60,14 @@ public class ExecutorServiceClient {
      */
     public Mono<CreateHierarchyResponse> createHierarchy(CreateHierarchyRequest request) {
         log.debug("Creating hierarchy: {}", request.getName());
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
+            log.info("CreateHierarchyRequest JSON:\n{}", json);
+        } catch (Exception e) {
+            log.error("Failed to serialize request", e);
+        }
         return webClient.post()
                 .uri("/api/executor/v1/hierarchies/create")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +115,11 @@ public class ExecutorServiceClient {
                 .filter(sse -> sse != null && sse.data() != null)
                 .map(ServerSentEvent::data)
                 .timeout(readTimeout)
-                .doOnNext(event -> log.debug("Received event: type={}, agent={}", event.getType(), event.getAgent()))
+                .doOnNext(event -> {
+                    // 记录 agent_id 以便追溯到具体的绑定关系（AgentBound.id）
+                    log.debug("Received event: type={}, agentName={}, agentId={} (bound_id for tracing)",
+                            event.getEventType(), event.getAgentName(), event.getAgentId());
+                })
                 .doOnComplete(() -> log.info("Event stream completed for run: {}", runId))
                 .doOnError(e -> log.error("Event stream error for run {}: {}", runId, e.getMessage()));
     }

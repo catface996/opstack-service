@@ -43,7 +43,7 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
-      logic-delete-field: deleted
+      # 逻辑删除改为在各 PO 上单独使用 @TableLogic 注解配置
       logic-delete-value: 1
       logic-not-delete-value: 0
 

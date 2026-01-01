@@ -107,6 +107,11 @@ public class TopologyGraphData {
     public static class GraphEdge {
 
         /**
+         * 边ID（Node2Node关系ID）
+         */
+        private Long id;
+
+        /**
          * 源节点ID
          */
         private Long sourceId;

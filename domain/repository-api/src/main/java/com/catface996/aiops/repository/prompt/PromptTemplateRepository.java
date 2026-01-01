@@ -106,4 +106,14 @@ public interface PromptTemplateRepository {
      * @return true if name exists for another template
      */
     boolean existsByNameExcludingId(String name, Long excludeId);
+
+    /**
+     * 批量查询模板（含当前版本内容）
+     *
+     * <p>用于 Executor 集成场景，批量获取 Agent 关联的 PromptTemplate content。</p>
+     *
+     * @param ids 模板 ID 列表
+     * @return 模板列表（含 content 字段）
+     */
+    List<PromptTemplate> findByIdsWithDetail(List<Long> ids);
 }

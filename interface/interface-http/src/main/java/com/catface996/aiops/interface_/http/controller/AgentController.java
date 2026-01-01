@@ -177,7 +177,7 @@ public class AgentController {
     public ResponseEntity<Result<AgentDTO>> updateAgent(
             @Valid @RequestBody UpdateAgentRequest request) {
 
-        log.info("更新 Agent，id: {}, name: {}, model: {}", request.getId(), request.getName(), request.getModel());
+        log.info("更新 Agent，id: {}, name: {}, modelName: {}, providerModelId: {}", request.getId(), request.getName(), request.getModelName(), request.getProviderModelId());
 
         AgentDTO agent = agentApplicationService.updateAgent(request);
 

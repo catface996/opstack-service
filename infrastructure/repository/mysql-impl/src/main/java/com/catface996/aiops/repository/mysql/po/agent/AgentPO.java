@@ -59,10 +59,16 @@ public class AgentPO implements Serializable {
     private Long promptTemplateId;
 
     /**
-     * AI 模型标识
+     * 模型友好名称（如 Claude Opus 4.5, gemini-2.0-flash）
      */
-    @TableField("model")
-    private String model;
+    @TableField("model_name")
+    private String modelName;
+
+    /**
+     * 模型提供商标识符（如 anthropic.claude-opus-4-5-20251124-v1:0）
+     */
+    @TableField("provider_model_id")
+    private String providerModelId;
 
     /**
      * 温度参数 (0.0-2.0)

@@ -7,6 +7,8 @@ import com.catface996.aiops.repository.mysql.po.prompt.PromptTemplatePO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 /**
  * 提示词模板 Mapper 接口
  *
@@ -64,4 +66,12 @@ public interface PromptTemplateMapper extends BaseMapper<PromptTemplatePO> {
      * @return 影响行数
      */
     int softDeleteById(@Param("id") Long id, @Param("updatedAt") java.time.LocalDateTime updatedAt);
+
+    /**
+     * 批量查询模板（含当前版本内容）
+     *
+     * @param ids 模板 ID 列表
+     * @return 模板列表（含 content 字段）
+     */
+    List<PromptTemplatePO> selectByIdsWithDetail(@Param("ids") List<Long> ids);
 }

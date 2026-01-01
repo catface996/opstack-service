@@ -215,6 +215,19 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
         int memberCount = topologyDomainService.countMembers(topology.getId());
         builder.memberCount(memberCount);
 
+        // 获取绑定的 Global Supervisor Agent 列表
+        List<AgentBound> boundAgents = agentBoundRepository.findByEntity(
+                BoundEntityType.TOPOLOGY, topology.getId(), AgentHierarchyLevel.GLOBAL_SUPERVISOR);
+        List<TopologyDTO.GlobalSupervisorInfo> globalSupervisors = boundAgents.stream()
+                .map(bound -> TopologyDTO.GlobalSupervisorInfo.builder()
+                        .agentId(bound.getAgentId())
+                        .agentName(bound.getAgentName())
+                        .specialty(bound.getAgentSpecialty())
+                        .modelName(bound.getAgentModelName())
+                        .build())
+                .collect(Collectors.toList());
+        builder.globalSupervisors(globalSupervisors);
+
         return builder.build();
     }
 
@@ -310,6 +323,7 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
         // 转换边列表
         List<TopologyGraphDTO.GraphEdgeDTO> edges = graphData.getEdges().stream()
                 .map(edge -> TopologyGraphDTO.GraphEdgeDTO.builder()
+                        .id(edge.getId())
                         .sourceId(edge.getSourceId())
                         .targetId(edge.getTargetId())
                         .relationshipType(edge.getRelationshipType())
@@ -418,7 +432,8 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
                 .role(agent.getRole() != null ? agent.getRole().name() : null)
                 .hierarchyLevel(agent.getHierarchyLevel() != null ? agent.getHierarchyLevel().name() : null)
                 .specialty(agent.getSpecialty())
-                .model(agent.getModel())
+                .modelName(agent.getModelName())
+                .providerModelId(agent.getProviderModelId())
                 .promptTemplateId(agent.getPromptTemplateId())
                 .promptTemplateName(agent.getPromptTemplateName())
                 .temperature(agent.getTemperature())
@@ -439,7 +454,37 @@ public class TopologyApplicationServiceImpl implements TopologyApplicationServic
                 .role(binding.getAgentRole())
                 .hierarchyLevel(binding.getHierarchyLevel() != null ? binding.getHierarchyLevel().name() : null)
                 .specialty(binding.getAgentSpecialty())
-                .model(binding.getAgentModel())
+                .modelName(binding.getAgentModelName())
                 .build();
+    }
+
+    @Override
+    public PageResult<UnboundAgentDTO> queryUnboundGlobalSupervisors(Long topologyId, String keyword, int page, int size) {
+        logger.info("查询未绑定 Global Supervisor，topologyId: {}, keyword: {}, page: {}, size: {}",
+                topologyId, keyword, page, size);
+
+        // 1. 查询该拓扑图已绑定的 Global Supervisor Agent ID 列表
+        List<AgentBound> boundAgents = agentBoundRepository.findByEntity(
+                BoundEntityType.TOPOLOGY, topologyId, AgentHierarchyLevel.GLOBAL_SUPERVISOR);
+        List<Long> excludeAgentIds = boundAgents.stream()
+                .map(AgentBound::getAgentId)
+                .collect(Collectors.toList());
+
+        // 2. 查询未绑定的 Global Supervisor Agent
+        List<Agent> agents = agentRepository.findUnboundGlobalSupervisors(
+                topologyId, excludeAgentIds, keyword, page, size);
+        long total = agentRepository.countUnboundGlobalSupervisors(topologyId, excludeAgentIds, keyword);
+
+        // 3. 转换为 DTO
+        List<UnboundAgentDTO> content = agents.stream()
+                .map(agent -> new UnboundAgentDTO(
+                        agent.getId(),
+                        agent.getName(),
+                        agent.getSpecialty(),
+                        agent.getModelName()
+                ))
+                .collect(Collectors.toList());
+
+        return PageResult.of(content, page, size, total);
     }
 }

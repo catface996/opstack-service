@@ -153,4 +153,29 @@ public interface TopologyApplicationService {
      * @throws IllegalArgumentException 如果拓扑图不存在
      */
     HierarchicalTeamDTO queryHierarchicalTeam(HierarchicalTeamQueryRequest request);
+
+    // ===== 未绑定 Agent 查询 =====
+
+    /**
+     * 查询未绑定的 Global Supervisor Agent
+     *
+     * <p>分页查询指定拓扑图未绑定的 GLOBAL_SUPERVISOR 层级 Agent 列表，用于绑定时选择。</p>
+     *
+     * @param topologyId 拓扑图ID
+     * @param keyword    关键词搜索（可选，搜索 name, specialty）
+     * @param page       页码（从1开始）
+     * @param size       每页大小
+     * @return 分页结果
+     */
+    PageResult<UnboundAgentDTO> queryUnboundGlobalSupervisors(Long topologyId, String keyword, int page, int size);
+
+    /**
+     * 未绑定 Agent DTO
+     */
+    record UnboundAgentDTO(
+            Long id,
+            String name,
+            String specialty,
+            String model
+    ) {}
 }

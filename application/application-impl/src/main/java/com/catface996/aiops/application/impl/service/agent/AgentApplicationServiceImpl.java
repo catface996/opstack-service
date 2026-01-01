@@ -101,7 +101,8 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
                 hierarchyLevel,
                 request.getSpecialty(),
                 request.getPromptTemplateId(),
-                request.getModel()
+                request.getModelName(),
+                request.getProviderModelId()
         );
 
         // 设置其他 LLM 配置（如果提供）
@@ -126,8 +127,8 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
     @Override
     @Transactional
     public AgentDTO updateAgent(UpdateAgentRequest request) {
-        logger.info("更新 Agent，id: {}, name: {}, model: {}",
-                request.getId(), request.getName(), request.getModel());
+        logger.info("更新 Agent，id: {}, name: {}, modelName: {}, providerModelId: {}",
+                request.getId(), request.getName(), request.getModelName(), request.getProviderModelId());
 
         Agent agent = agentRepository.findById(request.getId())
                 .orElseThrow(() -> new BusinessException(AgentErrorCode.AGENT_NOT_FOUND, request.getId()));
@@ -155,7 +156,8 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
         // 更新 LLM 配置（支持部分更新）
         agent.updateLlmConfig(
                 request.getPromptTemplateId(),
-                request.getModel(),
+                request.getModelName(),
+                request.getProviderModelId(),
                 request.getTemperature(),
                 request.getTopP(),
                 request.getMaxTokens(),
@@ -231,7 +233,8 @@ public class AgentApplicationServiceImpl implements AgentApplicationService {
                 // LLM 配置（扁平化）
                 .promptTemplateId(agent.getPromptTemplateId())
                 .promptTemplateName(agent.getPromptTemplateName())
-                .model(agent.getModel())
+                .modelName(agent.getModelName())
+                .providerModelId(agent.getProviderModelId())
                 .temperature(agent.getTemperature())
                 .topP(agent.getTopP())
                 .maxTokens(agent.getMaxTokens())
