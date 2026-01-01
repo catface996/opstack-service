@@ -8,6 +8,7 @@ import com.catface996.aiops.repository.prompt.PromptTemplateRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -98,6 +99,17 @@ public class PromptTemplateRepositoryImpl implements PromptTemplateRepository {
     public boolean existsByNameExcludingId(String name, Long excludeId) {
         PromptTemplatePO po = promptTemplateMapper.selectByName(name);
         return po != null && !po.getId().equals(excludeId);
+    }
+
+    @Override
+    public List<PromptTemplate> findByIdsWithDetail(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<PromptTemplatePO> poList = promptTemplateMapper.selectByIdsWithDetail(ids);
+        return poList.stream()
+                .map(this::toDomainWithDetail)
+                .collect(Collectors.toList());
     }
 
     // ==================== 转换方法 ====================

@@ -7,11 +7,12 @@
         id, agent_id, hierarchy_level, entity_id, entity_type, created_at, deleted
     </sql>
 
-    <!-- 按实体查询绑定（带 Agent 名称） -->
+    <!-- 按实体查询绑定（带 Agent 详情） -->
     <select id="selectByEntity" resultType="com.catface996.aiops.repository.mysql.po.agentbound.AgentBoundPO">
         SELECT ab.id, ab.agent_id, ab.hierarchy_level, ab.entity_id, ab.entity_type,
                ab.created_at, ab.deleted,
-               a.name AS agentName, a.role AS agentRole
+               a.name AS agentName, a.role AS agentRole,
+               a.specialty AS agentSpecialty, a.model_name AS agentModelName
         FROM agent_bound ab
         JOIN agent a ON ab.agent_id = a.id AND a.deleted = 0
         WHERE ab.entity_type = #{entityType}
@@ -42,11 +43,17 @@
         ORDER BY ab.entity_type, ab.entity_id
     </select>
 
-    <!-- 查询 Topology 的层级团队结构 -->
+    <!-- 查询 Topology 的层级团队结构（含 Agent 详情、LLM 配置和 PromptTemplate content） -->
     <select id="selectHierarchyByTopologyId" resultType="com.catface996.aiops.repository.mysql.po.agentbound.AgentBoundPO">
         SELECT ab.id, ab.agent_id, ab.hierarchy_level, ab.entity_id, ab.entity_type,
                ab.created_at, ab.deleted,
                a.name AS agentName, a.role AS agentRole,
+               a.specialty AS agentSpecialty,
+               a.model_name AS agentModelName, a.provider_model_id AS agentProviderModelId,
+               a.temperature AS agentTemperature,
+               a.top_p AS agentTopP,
+               a.max_tokens AS agentMaxTokens,
+               ptv.content AS promptTemplateContent,
                CASE
                    WHEN ab.entity_type = 'TOPOLOGY' THEN t.name
                    WHEN ab.entity_type = 'NODE' THEN n.name
@@ -55,6 +62,8 @@
         JOIN agent a ON ab.agent_id = a.id AND a.deleted = 0
         LEFT JOIN topology t ON ab.entity_type = 'TOPOLOGY' AND ab.entity_id = t.id AND t.deleted = 0
         LEFT JOIN node n ON ab.entity_type = 'NODE' AND ab.entity_id = n.id AND n.deleted = 0
+        LEFT JOIN prompt_template pt ON a.prompt_template_id = pt.id AND pt.deleted = 0
+        LEFT JOIN prompt_template_version ptv ON pt.id = ptv.template_id AND pt.current_version = ptv.version_number
         WHERE (ab.entity_type = 'TOPOLOGY' AND ab.entity_id = #{topologyId})
            OR (ab.entity_type = 'NODE' AND ab.entity_id IN (
               SELECT node_id FROM topology_2_node
@@ -104,7 +113,7 @@
         SELECT ab.id, ab.agent_id, ab.hierarchy_level, ab.entity_id, ab.entity_type,
                ab.created_at, ab.deleted,
                a.name AS agentName, a.role AS agentRole,
-               a.specialty AS agentSpecialty, a.model AS agentModel
+               a.specialty AS agentSpecialty, a.model_name AS agentModelName
         FROM agent_bound ab
         JOIN agent a ON ab.agent_id = a.id AND a.deleted = 0
         WHERE ab.entity_type = #{entityType}

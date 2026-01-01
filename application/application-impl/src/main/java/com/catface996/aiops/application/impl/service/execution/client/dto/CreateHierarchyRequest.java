@@ -16,22 +16,21 @@ import java.util.List;
  * <p>Executor API 格式：</p>
  * <pre>
  * {
- *   "name": "Hierarchy Name",
- *   "global_prompt": "Global supervisor instructions",
- *   "teams": [
- *     {
- *       "name": "Team A",
- *       "supervisor_prompt": "Team supervisor instructions",
- *       "workers": [
- *         {
- *           "name": "Worker 1",
- *           "role": "analyst",
- *           "system_prompt": "Worker instructions",
- *           "model": "gemini-2.0-flash"
- *         }
- *       ]
+ *   "name": "customer-service-team",
+ *   "description": "客服智能体团队",
+ *   "enable_context_sharing": false,
+ *   "execution_mode": "sequential",
+ *   "global_supervisor_agent": {
+ *     "agent_id": "gs-001",
+ *     "system_prompt": "You are a global coordinator...",
+ *     "llm_config": {
+ *       "model_id": "gemini-2.0-flash",
+ *       "temperature": 0.7,
+ *       "top_p": 0.9,
+ *       "max_tokens": 2048
  *     }
- *   ]
+ *   },
+ *   "teams": [...]
  * }
  * </pre>
  *
@@ -45,20 +44,101 @@ import java.util.List;
 public class CreateHierarchyRequest {
 
     /**
-     * 层级结构名称 (来自拓扑图名称)
+     * 层级结构名称
      */
     private String name;
 
     /**
-     * 全局监督者提示词 (来自 Global Supervisor Agent 的 specialty)
+     * 描述
      */
-    @JsonProperty("global_prompt")
-    private String globalPrompt;
+    private String description;
+
+    /**
+     * 是否启用上下文共享
+     */
+    @JsonProperty("enable_context_sharing")
+    private Boolean enableContextSharing;
+
+    /**
+     * 执行模式: sequential, parallel
+     */
+    @JsonProperty("execution_mode")
+    private String executionMode;
+
+    /**
+     * 全局监督者 Agent 配置
+     */
+    @JsonProperty("global_supervisor_agent")
+    private SupervisorAgentConfig globalSupervisorAgent;
 
     /**
      * 团队配置列表
      */
     private List<TeamConfig> teams;
+
+    /**
+     * LLM 配置
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LlmConfig {
+        /**
+         * 模型 ID
+         */
+        @JsonProperty("model_id")
+        private String modelId;
+
+        /**
+         * 温度参数 (0.0-2.0)
+         */
+        private Double temperature;
+
+        /**
+         * Top-P 采样参数 (0.0-1.0)
+         */
+        @JsonProperty("top_p")
+        private Double topP;
+
+        /**
+         * 最大 Token 数
+         */
+        @JsonProperty("max_tokens")
+        private Integer maxTokens;
+    }
+
+    /**
+     * 监督者 Agent 配置（Global Supervisor 和 Team Supervisor 共用）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SupervisorAgentConfig {
+        /**
+         * Agent ID（绑定关系 ID，即 agent_bound.id）
+         */
+        @JsonProperty("agent_id")
+        private String agentId;
+
+        /**
+         * Agent 名称
+         */
+        private String name;
+
+        /**
+         * 系统提示词
+         */
+        @JsonProperty("system_prompt")
+        private String systemPrompt;
+
+        /**
+         * LLM 配置
+         */
+        @JsonProperty("llm_config")
+        private LlmConfig llmConfig;
+    }
 
     /**
      * 团队配置
@@ -69,15 +149,27 @@ public class CreateHierarchyRequest {
     @AllArgsConstructor
     public static class TeamConfig {
         /**
-         * 团队名称 (来自节点名称)
+         * 团队名称
          */
         private String name;
 
         /**
-         * 团队监督者提示词 (来自 Team Supervisor Agent 的 specialty)
+         * 是否防止重复执行
          */
-        @JsonProperty("supervisor_prompt")
-        private String supervisorPrompt;
+        @JsonProperty("prevent_duplicate")
+        private Boolean preventDuplicate;
+
+        /**
+         * 是否共享上下文
+         */
+        @JsonProperty("share_context")
+        private Boolean shareContext;
+
+        /**
+         * 团队监督者 Agent 配置
+         */
+        @JsonProperty("team_supervisor_agent")
+        private SupervisorAgentConfig teamSupervisorAgent;
 
         /**
          * 工作者 Agent 配置列表
@@ -94,6 +186,12 @@ public class CreateHierarchyRequest {
     @AllArgsConstructor
     public static class WorkerConfig {
         /**
+         * Agent ID（绑定关系 ID，即 agent_bound.id）
+         */
+        @JsonProperty("agent_id")
+        private String agentId;
+
+        /**
          * Agent 名称
          */
         private String name;
@@ -104,14 +202,20 @@ public class CreateHierarchyRequest {
         private String role;
 
         /**
-         * Agent 系统提示词
+         * 系统提示词
          */
         @JsonProperty("system_prompt")
         private String systemPrompt;
 
         /**
-         * LLM 模型标识
+         * LLM 配置
          */
-        private String model;
+        @JsonProperty("llm_config")
+        private LlmConfig llmConfig;
+
+        /**
+         * 工具列表
+         */
+        private List<String> tools;
     }
 }

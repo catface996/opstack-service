@@ -48,9 +48,13 @@ public class CreateAgentRequest {
     @Schema(description = "提示词模板 ID（可选）", example = "1")
     private Long promptTemplateId;
 
-    @Schema(description = "AI 模型标识（可选，默认 gemini-2.0-flash）", example = "gemini-2.0-flash")
-    @Size(max = 100, message = "模型标识长度不能超过 100 个字符")
-    private String model;
+    @Schema(description = "模型友好名称（可选，默认 gemini-2.0-flash）", example = "Claude Opus 4.5")
+    @Size(max = 100, message = "模型名称长度不能超过 100 个字符")
+    private String modelName;
+
+    @Schema(description = "模型提供商标识符（可选）", example = "anthropic.claude-opus-4-5-20251124-v1:0")
+    @Size(max = 200, message = "模型提供商标识符长度不能超过 200 个字符")
+    private String providerModelId;
 
     @Schema(description = "温度参数 (0.0-2.0)，控制输出随机性（可选，默认 0.3）", example = "0.3")
     @DecimalMin(value = "0.0", message = "温度参数不能小于 0.0")

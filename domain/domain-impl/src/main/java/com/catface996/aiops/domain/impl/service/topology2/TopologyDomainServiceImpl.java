@@ -198,6 +198,7 @@ public class TopologyDomainServiceImpl implements TopologyDomainService {
 
             List<TopologyGraphData.GraphEdge> edges = relationships.stream()
                     .map(rel -> TopologyGraphData.GraphEdge.builder()
+                            .id(rel.id())
                             .sourceId(rel.sourceId())
                             .targetId(rel.targetId())
                             .relationshipType(rel.relationshipType())

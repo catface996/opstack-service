@@ -17,6 +17,7 @@ import com.catface996.aiops.application.api.service.topology.TopologyApplication
 import com.catface996.aiops.application.api.service.topology.TopologyReportTemplateApplicationService;
 import com.catface996.aiops.interface_.http.request.topology.BindReportTemplatesRequest;
 import com.catface996.aiops.interface_.http.request.topology.QueryBoundTemplatesRequest;
+import com.catface996.aiops.interface_.http.request.topology.QueryUnboundAgentsRequest;
 import com.catface996.aiops.interface_.http.request.topology.QueryUnboundTemplatesRequest;
 import com.catface996.aiops.interface_.http.request.topology.UnbindReportTemplatesRequest;
 import com.catface996.aiops.interface_.http.response.Result;
@@ -429,6 +430,32 @@ public class TopologyController {
 
         PageResult<TopologyReportTemplateApplicationService.UnboundTemplateDTO> result =
                 topologyReportTemplateApplicationService.queryUnboundTemplates(
+                        request.getTopologyId(), request.getKeyword(), request.getPage(), request.getSize());
+
+        return ResponseEntity.ok(Result.success(result));
+    }
+
+    // ===== 未绑定 Agent 查询接口 =====
+
+    /**
+     * 查询未绑定的 Global Supervisor Agent
+     *
+     * <p>分页查询拓扑图未绑定的 GLOBAL_SUPERVISOR 层级 Agent 列表，用于绑定时选择。</p>
+     */
+    @PostMapping("/agents/unbound")
+    @Operation(summary = "查询未绑定 Global Supervisor Agent", description = "分页查询拓扑图未绑定的 GLOBAL_SUPERVISOR 层级 Agent 列表，用于绑定时选择")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "查询成功"),
+            @ApiResponse(responseCode = "401", description = "未认证")
+    })
+    public ResponseEntity<Result<PageResult<TopologyApplicationService.UnboundAgentDTO>>> queryUnboundAgents(
+            @Valid @RequestBody QueryUnboundAgentsRequest request) {
+
+        log.info("查询未绑定 Global Supervisor Agent，topologyId: {}, keyword: {}", request.getTopologyId(), request.getKeyword());
+
+        PageResult<TopologyApplicationService.UnboundAgentDTO> result =
+                topologyApplicationService.queryUnboundGlobalSupervisors(
                         request.getTopologyId(), request.getKeyword(), request.getPage(), request.getSize());
 
         return ResponseEntity.ok(Result.success(result));

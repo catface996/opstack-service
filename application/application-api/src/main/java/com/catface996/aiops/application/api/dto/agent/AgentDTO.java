@@ -46,8 +46,17 @@ public class AgentDTO {
     @Schema(description = "提示词模板名称", example = "性能诊断模板")
     private String promptTemplateName;
 
-    @Schema(description = "AI 模型标识", example = "gemini-2.0-flash")
-    private String model;
+    @Schema(description = "提示词模板内容（system_prompt 来源）")
+    private String promptTemplateContent;
+
+    @Schema(description = "绑定关系 ID（作为 Executor 的 agent_id）", example = "100")
+    private Long boundId;
+
+    @Schema(description = "模型友好名称", example = "Claude Opus 4.5")
+    private String modelName;
+
+    @Schema(description = "模型提供商标识符", example = "anthropic.claude-opus-4-5-20251124-v1:0")
+    private String providerModelId;
 
     @Schema(description = "温度参数 (0.0-2.0)", example = "0.3")
     private Double temperature;

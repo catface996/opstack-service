@@ -51,9 +51,14 @@ public class Agent {
     private String promptTemplateName;
 
     /**
-     * AI 模型标识（如 claude-3-opus, gemini-2.0-flash）
+     * 模型友好名称（如 Claude Opus 4.5, gemini-2.0-flash）
      */
-    private String model;
+    private String modelName;
+
+    /**
+     * 模型提供商标识符（如 anthropic.claude-opus-4-5-20251124-v1:0）
+     */
+    private String providerModelId;
 
     /**
      * 温度参数 (0.0-2.0)，控制输出随机性
@@ -133,18 +138,20 @@ public class Agent {
      * @param hierarchyLevel   Agent 层级（团队位置）
      * @param specialty        专业领域描述
      * @param promptTemplateId 提示词模板ID（可选）
-     * @param model            模型标识（可选）
+     * @param modelName        模型友好名称（可选）
+     * @param providerModelId  模型提供商标识符（可选）
      * @return 新创建的 Agent 实例
      */
     public static Agent create(String name, AgentRole role, AgentHierarchyLevel hierarchyLevel,
-                               String specialty, Long promptTemplateId, String model) {
+                               String specialty, Long promptTemplateId, String modelName, String providerModelId) {
         Agent agent = new Agent();
         agent.setName(name);
         agent.setRole(role);
         agent.setHierarchyLevel(hierarchyLevel != null ? hierarchyLevel : AgentHierarchyLevel.TEAM_WORKER);
         agent.setSpecialty(specialty);
         agent.setPromptTemplateId(promptTemplateId);
-        agent.setModel(model != null ? model : DEFAULT_MODEL);
+        agent.setModelName(modelName != null ? modelName : DEFAULT_MODEL);
+        agent.setProviderModelId(providerModelId);
         agent.setTemperature(DEFAULT_TEMPERATURE);
         agent.setTopP(DEFAULT_TOP_P);
         agent.setMaxTokens(DEFAULT_MAX_TOKENS);
@@ -179,19 +186,23 @@ public class Agent {
      * 更新 LLM 配置
      *
      * @param promptTemplateId 提示词模板ID（为 null 时不更新）
-     * @param model            模型标识（为 null 时不更新）
+     * @param modelName        模型友好名称（为 null 时不更新）
+     * @param providerModelId  模型提供商标识符（为 null 时不更新）
      * @param temperature      温度参数（为 null 时不更新）
      * @param topP             Top P 参数（为 null 时不更新）
      * @param maxTokens        最大 token 数（为 null 时不更新）
      * @param maxRuntime       最长运行时间（为 null 时不更新）
      */
-    public void updateLlmConfig(Long promptTemplateId, String model, Double temperature,
-                                Double topP, Integer maxTokens, Integer maxRuntime) {
+    public void updateLlmConfig(Long promptTemplateId, String modelName, String providerModelId,
+                                Double temperature, Double topP, Integer maxTokens, Integer maxRuntime) {
         if (promptTemplateId != null) {
             this.promptTemplateId = promptTemplateId;
         }
-        if (model != null) {
-            this.model = model;
+        if (modelName != null) {
+            this.modelName = modelName;
+        }
+        if (providerModelId != null) {
+            this.providerModelId = providerModelId;
         }
         if (temperature != null) {
             this.temperature = temperature;
@@ -335,12 +346,20 @@ public class Agent {
         this.promptTemplateName = promptTemplateName;
     }
 
-    public String getModel() {
-        return model;
+    public String getModelName() {
+        return modelName;
     }
 
-    public void setModel(String model) {
-        this.model = model;
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
+    }
+
+    public String getProviderModelId() {
+        return providerModelId;
+    }
+
+    public void setProviderModelId(String providerModelId) {
+        this.providerModelId = providerModelId;
     }
 
     public Double getTemperature() {
@@ -424,7 +443,7 @@ public class Agent {
                 ", hierarchyLevel=" + hierarchyLevel +
                 ", specialty='" + specialty + '\'' +
                 ", promptTemplateId=" + promptTemplateId +
-                ", model='" + model + '\'' +
+                ", modelName='" + modelName + '\'' +
                 ", deleted=" + deleted +
                 '}';
     }

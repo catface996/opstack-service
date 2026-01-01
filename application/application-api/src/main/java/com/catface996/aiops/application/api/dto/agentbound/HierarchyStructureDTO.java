@@ -15,7 +15,7 @@ import java.util.List;
  * <p>表示 Topology 的完整层级化 Agent 团队结构，包含：</p>
  * <ul>
  *   <li>Topology 基本信息</li>
- *   <li>Global Supervisor: 拓扑图绑定的全局监管者</li>
+ *   <li>Global Supervisor: 拓扑图绑定的唯一全局监管者</li>
  *   <li>Teams: 各资源节点对应的团队列表</li>
  * </ul>
  *
@@ -40,9 +40,9 @@ public class HierarchyStructureDTO {
     @Schema(description = "拓扑图名称", example = "生产环境")
     private String topologyName;
 
-    @Schema(description = "全局监管者 Agent（可为 null）")
+    @Schema(description = "全局监管者 Agent（一个 Topology 只有一个 Global Supervisor，可为 null）")
     private AgentDTO globalSupervisor;
 
-    @Schema(description = "团队列表（每个节点对应一个团队）")
+    @Schema(description = "团队列表（每个节点对应一个团队，即使没有绑定 Agent 也会返回节点）")
     private List<HierarchyTeamDTO> teams;
 }

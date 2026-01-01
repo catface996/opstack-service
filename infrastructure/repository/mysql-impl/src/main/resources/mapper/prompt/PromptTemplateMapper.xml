@@ -63,4 +63,19 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 批量查询模板（含当前版本内容） -->
+    <select id="selectByIdsWithDetail" resultType="com.catface996.aiops.repository.mysql.po.prompt.PromptTemplatePO">
+        SELECT pt.id, pt.name, pt.description, pt.usage_id, pt.current_version,
+               pt.created_by, pt.created_at, pt.updated_by, pt.updated_at, pt.version, pt.deleted,
+               tu.name AS usage_name, ptv.content
+        FROM prompt_template pt
+        LEFT JOIN template_usage tu ON pt.usage_id = tu.id AND tu.deleted = 0
+        LEFT JOIN prompt_template_version ptv ON pt.id = ptv.template_id AND pt.current_version = ptv.version_number
+        WHERE pt.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND pt.deleted = 0
+    </select>
+
 </mapper>

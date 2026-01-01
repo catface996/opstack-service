@@ -184,6 +184,21 @@ public class AgentRepositoryImpl implements AgentRepository {
         return Optional.of(toDomain(po));
     }
 
+    @Override
+    public List<Agent> findUnboundGlobalSupervisors(Long topologyId, List<Long> excludeAgentIds, String keyword, int page, int size) {
+        Page<AgentPO> pageParam = new Page<>(page, size);
+        return agentMapper.selectPageUnboundGlobalSupervisors(pageParam, excludeAgentIds, keyword)
+                .getRecords()
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long countUnboundGlobalSupervisors(Long topologyId, List<Long> excludeAgentIds, String keyword) {
+        return agentMapper.countUnboundGlobalSupervisors(excludeAgentIds, keyword);
+    }
+
     // ==================== 转换方法 ====================
 
     private Agent toDomain(AgentPO po) {
@@ -199,7 +214,8 @@ public class AgentRepositoryImpl implements AgentRepository {
 
         // LLM 配置（扁平化）
         agent.setPromptTemplateId(po.getPromptTemplateId());
-        agent.setModel(po.getModel());
+        agent.setModelName(po.getModelName());
+        agent.setProviderModelId(po.getProviderModelId());
         agent.setTemperature(po.getTemperature());
         agent.setTopP(po.getTopP());
         agent.setMaxTokens(po.getMaxTokens());
@@ -230,7 +246,8 @@ public class AgentRepositoryImpl implements AgentRepository {
 
         // LLM 配置（扁平化）
         po.setPromptTemplateId(domain.getPromptTemplateId());
-        po.setModel(domain.getModel());
+        po.setModelName(domain.getModelName());
+        po.setProviderModelId(domain.getProviderModelId());
         po.setTemperature(domain.getTemperature());
         po.setTopP(domain.getTopP());
         po.setMaxTokens(domain.getMaxTokens());

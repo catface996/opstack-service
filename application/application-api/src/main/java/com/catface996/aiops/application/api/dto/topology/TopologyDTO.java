@@ -50,8 +50,33 @@ public class TopologyDTO {
     @Schema(description = "成员数量", example = "15")
     private Integer memberCount;
 
+    @Schema(description = "绑定的 Global Supervisor Agent 列表")
+    private java.util.List<GlobalSupervisorInfo> globalSupervisors;
+
     @Schema(description = "版本号（乐观锁）", example = "1")
     private Integer version;
+
+    /**
+     * Global Supervisor 信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "Global Supervisor 信息")
+    public static class GlobalSupervisorInfo {
+        @Schema(description = "Agent ID", example = "7")
+        private Long agentId;
+
+        @Schema(description = "Agent 名称", example = "Global Supervisor Agent")
+        private String agentName;
+
+        @Schema(description = "专业领域", example = "全局监控与协调")
+        private String specialty;
+
+        @Schema(description = "模型友好名称", example = "Claude Opus 4.5")
+        private String modelName;
+    }
 
     @Schema(description = "创建者ID", example = "1")
     private Long createdBy;

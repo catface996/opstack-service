@@ -85,12 +85,9 @@ public class ExecutionApplicationServiceImpl implements ExecutionApplicationServ
                                 log.info("Run started: {}", startResponse.getRunId());
                                 String runId = startResponse.getRunId();
 
-                                // 先发送 started 事件（包含 runId），然后发送后续事件流
-                                Flux<ExecutionEventDTO> startedEvent = Flux.just(ExecutionEventDTO.started(runId));
-                                Flux<ExecutionEventDTO> eventStream = executorServiceClient.streamEvents(runId)
+                                // 直接返回 Executor 的事件流
+                                return executorServiceClient.streamEvents(runId)
                                         .map(this::transformEvent);
-
-                                return Flux.concat(startedEvent, eventStream);
                             });
                 })
                 .onErrorResume(e -> {
@@ -116,6 +113,17 @@ public class ExecutionApplicationServiceImpl implements ExecutionApplicationServ
 
     /**
      * 将 ExecutorEvent 转换为 ExecutionEventDTO
+     *
+     * <p>映射关系：</p>
+     * <ul>
+     *   <li>type: event.category.action 或 event.type</li>
+     *   <li>runId: event.run_id</li>
+     *   <li>agentId: source.agent_id（绑定关系 ID，用于追溯）</li>
+     *   <li>agentName: source.agent_name 或 event.agent</li>
+     *   <li>agentType: source.agent_type</li>
+     *   <li>teamName: source.team_name</li>
+     *   <li>content: data.content 或 event.content</li>
+     * </ul>
      */
     private ExecutionEventDTO transformEvent(ExecutorEvent event) {
         LocalDateTime timestamp;
@@ -128,9 +136,13 @@ public class ExecutionApplicationServiceImpl implements ExecutionApplicationServ
         }
 
         return ExecutionEventDTO.builder()
-                .type(event.getType())
-                .agentName(event.getAgent())
-                .content(event.getContent())
+                .type(event.getEventType())
+                .runId(event.getRunId())
+                .agentId(event.getAgentId())
+                .agentName(event.getAgentName())
+                .agentType(event.getAgentType())
+                .teamName(event.getTeamName())
+                .content(event.getEventContent())
                 .timestamp(timestamp)
                 .metadata(event.getData())
                 .build();

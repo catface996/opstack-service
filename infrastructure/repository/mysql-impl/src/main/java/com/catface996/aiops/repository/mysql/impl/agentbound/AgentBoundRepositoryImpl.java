@@ -159,6 +159,11 @@ public class AgentBoundRepositoryImpl implements AgentBoundRepository {
 
         // 设置派生字段
         domain.setDerivedFields(po.getAgentName(), po.getAgentRole(), po.getEntityName());
+        domain.setAgentSpecialty(po.getAgentSpecialty());
+        domain.setAgentModelName(po.getAgentModelName());
+        domain.setAgentProviderModelId(po.getAgentProviderModelId());
+        domain.setLlmConfig(po.getAgentTemperature(), po.getAgentTopP(), po.getAgentMaxTokens());
+        domain.setPromptTemplateContent(po.getPromptTemplateContent());
 
         return domain;
     }
@@ -180,7 +185,8 @@ public class AgentBoundRepositoryImpl implements AgentBoundRepository {
         // 设置派生字段（包含 Agent 详情）
         domain.setDerivedFields(po.getAgentName(), po.getAgentRole(), po.getEntityName());
         domain.setAgentSpecialty(po.getAgentSpecialty());
-        domain.setAgentModel(po.getAgentModel());
+        domain.setAgentModelName(po.getAgentModelName());
+        domain.setPromptTemplateContent(po.getPromptTemplateContent());
 
         return domain;
     }

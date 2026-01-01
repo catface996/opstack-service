@@ -90,8 +90,38 @@ public class AgentBoundPO implements Serializable {
     private String agentSpecialty;
 
     /**
-     * Agent 使用的模型（JOIN 查询填充）
+     * Agent 模型友好名称（JOIN 查询填充）
      */
     @TableField(exist = false)
-    private String agentModel;
+    private String agentModelName;
+
+    /**
+     * Agent 模型提供商标识符（JOIN 查询填充）
+     */
+    @TableField(exist = false)
+    private String agentProviderModelId;
+
+    /**
+     * Agent 温度参数（JOIN 查询填充）
+     */
+    @TableField(exist = false)
+    private Double agentTemperature;
+
+    /**
+     * Agent Top-P 参数（JOIN 查询填充）
+     */
+    @TableField(exist = false)
+    private Double agentTopP;
+
+    /**
+     * Agent 最大 Token 数（JOIN 查询填充）
+     */
+    @TableField(exist = false)
+    private Integer agentMaxTokens;
+
+    /**
+     * Agent 关联的提示词模板内容（JOIN 查询填充，作为 system_prompt 来源）
+     */
+    @TableField(exist = false)
+    private String promptTemplateContent;
 }

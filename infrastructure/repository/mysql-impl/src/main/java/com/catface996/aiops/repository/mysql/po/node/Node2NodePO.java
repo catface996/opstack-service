@@ -92,13 +92,6 @@ public class Node2NodePO implements Serializable {
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
-    /**
-     * 软删除标记: 0-未删除, 1-已删除
-     */
-    @TableField("deleted")
-    @TableLogic
-    private Integer deleted;
-
     // ==================== 派生字段（不映射到数据库，用于 JOIN 查询结果）====================
 
     /**

@@ -163,4 +163,28 @@ public interface AgentRepository {
      * @return Agent 实体（如果存在且层级匹配）
      */
     Optional<Agent> findByIdAndHierarchyLevel(Long id, AgentHierarchyLevel hierarchyLevel);
+
+    /**
+     * 分页查询未绑定到指定拓扑图的 Global Supervisor Agent
+     *
+     * <p>查询 GLOBAL_SUPERVISOR 层级且未绑定到指定拓扑图的 Agent 列表。</p>
+     *
+     * @param topologyId      拓扑图ID
+     * @param excludeAgentIds 要排除的 Agent ID 列表（已绑定的）
+     * @param keyword         关键词搜索（可选，搜索 name, specialty）
+     * @param page            页码（从1开始）
+     * @param size            每页大小
+     * @return Agent 列表
+     */
+    List<Agent> findUnboundGlobalSupervisors(Long topologyId, List<Long> excludeAgentIds, String keyword, int page, int size);
+
+    /**
+     * 统计未绑定到指定拓扑图的 Global Supervisor Agent 数量
+     *
+     * @param topologyId      拓扑图ID
+     * @param excludeAgentIds 要排除的 Agent ID 列表（已绑定的）
+     * @param keyword         关键词搜索（可选）
+     * @return Agent 数量
+     */
+    long countUnboundGlobalSupervisors(Long topologyId, List<Long> excludeAgentIds, String keyword);
 }
