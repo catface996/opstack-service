@@ -1,0 +1,76 @@
+# Docker Environment Configuration
+# 容器化部署环境配置
+
+server:
+  port: 8081
+
+spring:
+  # Redis 配置
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      database: 0
+
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:op_stack_service}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+
+    # Druid 连接池配置 (生产环境调优)
+    druid:
+      initial-size: 10
+      min-idle: 5
+      max-active: 50
+      max-wait: 60000
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      validation-query: SELECT 1
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+
+      # 禁用 Druid 监控 (生产环境)
+      stat-view-servlet:
+        enabled: false
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      banner: false
+
+# Security 配置
+security:
+  jwt:
+    secret: ${JWT_SECRET:docker-secret-key-for-jwt-token-must-be-at-least-256-bits-long-for-hmac-sha256}
+    expiration: ${JWT_EXPIRATION:7200}
+    issuer: aiops-service
+  login:
+    max-failed-attempts: 5
+    lock-duration: 1800
+
+# AIOps 配置
+aiops:
+  security:
+    encryption:
+      key: ${ENCRYPTION_KEY:dockerEncryptionKey1234567890ab}
+
+# Executor Service 配置
+executor:
+  service:
+    base-url: ${EXECUTOR_BASE_URL:http://executor:8082}
+    timeout:
+      connect: 5000
+      read: 60000
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.catface996: INFO
